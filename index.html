@@ -156,20 +156,19 @@
       backdrop-filter: blur(14px);
     }
     .brand {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+      display: grid;
       gap: 10px;
       margin-bottom: 10px;
-      flex-wrap: wrap;
     }
     .brand-actions {
       display: flex;
       align-items: center;
       gap: 8px;
       min-width: 0;
-      flex: 1 1 260px;
       justify-content: flex-end;
+    }
+    .brand-actions .month-select {
+      margin-right: auto;
     }
     .user-badge {
       min-height: 32px;
@@ -190,15 +189,7 @@
       white-space: nowrap;
     }
     @media (max-width: 430px) {
-      .brand {
-        align-items: flex-start;
-        gap: 10px;
-      }
-      .brand h1 {
-        flex: 1 1 120px;
-      }
       .brand-actions {
-        flex: 1 1 210px;
         gap: 8px;
       }
       .month-select {
@@ -217,8 +208,7 @@
       margin: 0;
       font-size: 18px;
       line-height: 1.2;
-      text-align: center;
-      flex: 1 1 220px;
+      text-align: left;
       min-width: 0;
     }
     .app-title {
@@ -1187,7 +1177,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.21.01";
+    const appVersion = "2026.06.21.02";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
