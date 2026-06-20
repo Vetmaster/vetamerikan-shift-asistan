@@ -1181,12 +1181,13 @@
     const authUsersStorageKey = "vetamerikan-shift-users";
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const notificationListStorageKey = "vetamerikan-shift-notification-list";
+    const notificationClearedAtStorageKey = "vetamerikan-shift-notifications-cleared-at";
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.33";
+    const appVersion = "2026.06.20.34";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1793,19 +1794,33 @@
       els.notificationPermissionPrompt.hidden = true;
     }
 
+    function notificationClearedAt() {
+      return localStorage.getItem(notificationClearedAtStorageKey) || "";
+    }
+
+    function isNotificationAfterClear(item) {
+      const clearedAt = notificationClearedAt();
+      if (!clearedAt) return true;
+      const itemTime = new Date(item.createdAt || item.created_at || 0).getTime();
+      const clearTime = new Date(clearedAt).getTime();
+      if (Number.isNaN(itemTime) || Number.isNaN(clearTime)) return true;
+      return itemTime > clearTime;
+    }
+
     function savedNotifications() {
       try {
-        return JSON.parse(localStorage.getItem(notificationListStorageKey) || "[]");
+        return JSON.parse(localStorage.getItem(notificationListStorageKey) || "[]").filter(isNotificationAfterClear);
       } catch {
         return [];
       }
     }
 
     function saveNotifications(items) {
-      localStorage.setItem(notificationListStorageKey, JSON.stringify(items.slice(0, 80)));
+      localStorage.setItem(notificationListStorageKey, JSON.stringify(items.filter(isNotificationAfterClear).slice(0, 80)));
     }
 
     function upsertLocalNotification(item) {
+      if (!isNotificationAfterClear(item)) return;
       const items = savedNotifications();
       if (items.some(existing => existing.id === item.id)) return;
       items.unshift(item);
@@ -1884,6 +1899,7 @@
     }
 
     function clearNotifications() {
+      localStorage.setItem(notificationClearedAtStorageKey, new Date().toISOString());
       saveNotifications([]);
       renderNotificationBadge();
       renderNotificationCenter();
@@ -1966,10 +1982,12 @@
         lastNotificationFingerprint = fingerprint;
         const localItems = savedNotifications();
         const readState = new Map(localItems.map(item => [item.id, item.read]));
-        const remoteItems = records.map(record => ({
-          ...notificationFromRecord(record),
-          read: readState.get(String(record.id)) || false
-        }));
+        const remoteItems = records
+          .map(record => ({
+            ...notificationFromRecord(record),
+            read: readState.get(String(record.id)) || false
+          }))
+          .filter(isNotificationAfterClear);
         saveNotifications(remoteItems);
         renderNotificationBadge();
         if (!els.notificationView.hidden) renderNotificationCenter();
