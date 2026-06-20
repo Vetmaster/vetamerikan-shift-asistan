@@ -1187,7 +1187,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.34";
+    const appVersion = "2026.06.21.01";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1564,7 +1564,24 @@
       requestAnimationFrame(() => els.authUsername.focus());
     }
 
+    function resetToHomeView() {
+      activeProfileSicil = null;
+      profileEditContext = null;
+      els.app.classList.remove("profile-mode", "notification-mode");
+      els.profileView.hidden = true;
+      els.profileView.innerHTML = "";
+      els.notificationView.hidden = true;
+      els.notificationView.innerHTML = "";
+      closeDrawer();
+      closeCodeMenu();
+      state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
+      state.shift = "morning";
+      state.query = "";
+      els.search.value = "";
+    }
+
     function unlockApp() {
+      resetToHomeView();
       document.body.classList.remove("locked");
       updateUserBadge();
       updateAdminVisibility();
@@ -1572,12 +1589,11 @@
       els.authUsername.value = "";
       els.authPassword.value = "";
       els.authError.textContent = "";
-      renderList();
+      render();
     }
 
     async function lockApp() {
-      closeDrawer();
-      closeCodeMenu();
+      resetToHomeView();
       if (supabaseClient) await supabaseClient.auth.signOut();
       clearAuth();
       updateUserBadge();
