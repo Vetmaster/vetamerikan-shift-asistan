@@ -113,6 +113,12 @@
       font-size: 12px;
       font-weight: 800;
     }
+    .auth-status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
     .app {
       height: 100svh;
       max-width: 760px;
@@ -1027,6 +1033,7 @@
       <h1>VETAMERİKAN SHIFT ASİSTAN</h1>
       <p class="login-copy">Uygulamaya giriş yapmak için kullanıcı adı ve şifreyi girin.</p>
       <p class="register-copy">Yeni kullanıcı oluşturmak için kullanıcı adı ve şifre belirleyin.</p>
+      <div id="authStatus" class="auth-status"></div>
       <input id="authUsername" type="text" placeholder="Kullanıcı adı" autocomplete="username">
       <input id="authPassword" type="password" placeholder="Şifre" autocomplete="current-password">
       <div class="auth-actions">
@@ -1150,7 +1157,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.27";
+    const appVersion = "2026.06.20.28";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1339,6 +1346,7 @@
       authScreen: document.getElementById("authScreen"),
       authUsername: document.getElementById("authUsername"),
       authPassword: document.getElementById("authPassword"),
+      authStatus: document.getElementById("authStatus"),
       authError: document.getElementById("authError"),
       showRegisterButton: document.getElementById("showRegisterButton"),
       createAccountButton: document.getElementById("createAccountButton"),
@@ -1489,6 +1497,12 @@
       els.excelDatabaseTools.hidden = !isAdminUser();
     }
 
+    function updateAuthStatus() {
+      els.authStatus.textContent = supabaseClient
+        ? `Supabase bağlantılı giriş aktif. Sürüm ${appVersion}`
+        : `Supabase kütüphanesi yüklenemedi. Sürüm ${appVersion}`;
+    }
+
     async function registerUser() {
       const username = els.authUsername.value.trim().toLocaleLowerCase("tr-TR");
       const password = els.authPassword.value;
@@ -1542,6 +1556,7 @@
     }
 
     async function initAuth() {
+      updateAuthStatus();
       if (supabaseClient) {
         const { data } = await supabaseClient.auth.getSession();
         const user = data.session?.user;
