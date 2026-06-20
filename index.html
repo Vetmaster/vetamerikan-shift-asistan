@@ -1107,7 +1107,7 @@
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.10";
+    const appVersion = "2026.06.20.11";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1822,7 +1822,6 @@
       if (payload.eventType !== "INSERT" || !payload.new?.id) return;
       const item = notificationFromRecord(payload.new);
       upsertLocalNotification(item);
-      showToast(item.title, item.body);
     }
 
     function overrideInfoForKey(key) {
