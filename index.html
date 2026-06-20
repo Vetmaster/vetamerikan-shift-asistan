@@ -874,6 +874,34 @@
       color: var(--muted);
       font-size: 12px;
     }
+    .toast-area {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      z-index: 80;
+      display: grid;
+      gap: 8px;
+      pointer-events: none;
+    }
+    .toast {
+      width: min(520px, 100%);
+      margin: 0 auto;
+      padding: 12px 14px;
+      border: 1px solid rgba(15, 108, 116, .24);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, .98);
+      box-shadow: var(--shadow);
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+      pointer-events: auto;
+    }
+    .toast strong {
+      display: block;
+      margin-bottom: 2px;
+      font-size: 14px;
+    }
     .admin-only[hidden] { display: none !important; }
     [hidden] { display: none !important; }
   </style>
@@ -962,6 +990,8 @@
         <button id="resetOverridesButton" type="button">Manuel değişiklikleri sıfırla</button>
         <div id="importStatus" class="import-status"></div>
       </div>
+      <button id="notificationButton" type="button">Bildirimlere izin ver</button>
+      <div id="notificationStatus" class="import-status"></div>
       <div id="appVersionLabel" class="import-status"></div>
       <button id="logoutButton" type="button">Çıkış yap</button>
     </div>
@@ -976,6 +1006,8 @@
     <div id="codeMenuOptions" class="code-menu-options"></div>
   </div>
 
+  <div id="toastArea" class="toast-area" aria-live="polite" aria-atomic="true"></div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const appUsername = "admin";
@@ -986,10 +1018,11 @@
     const authStorageKey = "vetamerikan-shift-authenticated";
     const authUserStorageKey = "vetamerikan-shift-auth-user";
     const authUsersStorageKey = "vetamerikan-shift-users";
+    const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
-    const appVersion = "2026.06.20.4";
+    const appVersion = "2026.06.20.5";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1165,6 +1198,7 @@
     let supabaseRealtimeChannel = null;
     let supabasePollTimer = null;
     let lastRemoteFingerprint = "";
+    let hasLoadedRemoteOverrides = false;
     const pendingOverrideKeys = new Set();
     const els = {
       app: document.getElementById("app"),
@@ -1206,6 +1240,8 @@
       importTextButton: document.getElementById("importTextButton"),
       resetOverridesButton: document.getElementById("resetOverridesButton"),
       adminDatabaseTools: document.getElementById("adminDatabaseTools"),
+      notificationButton: document.getElementById("notificationButton"),
+      notificationStatus: document.getElementById("notificationStatus"),
       appVersionLabel: document.getElementById("appVersionLabel"),
       logoutButton: document.getElementById("logoutButton"),
       datasetSelect: document.getElementById("datasetSelect"),
@@ -1219,7 +1255,8 @@
       codeMenuBackdrop: document.getElementById("codeMenuBackdrop"),
       codeMenuTitle: document.getElementById("codeMenuTitle"),
       codeMenuOptions: document.getElementById("codeMenuOptions"),
-      codeMenuClose: document.getElementById("codeMenuClose")
+      codeMenuClose: document.getElementById("codeMenuClose"),
+      toastArea: document.getElementById("toastArea")
     };
 
     function norm(text) {
@@ -1480,6 +1517,93 @@
       if (els.importStatus) els.importStatus.textContent = message;
     }
 
+    function updateNotificationStatus() {
+      if (!("Notification" in window)) {
+        els.notificationButton.disabled = true;
+        els.notificationStatus.textContent = "Bu tarayıcı sistem bildirimini desteklemiyor.";
+        return;
+      }
+      const permission = Notification.permission;
+      els.notificationButton.textContent = permission === "granted" ? "Bildirimler açık" : "Bildirimlere izin ver";
+      els.notificationButton.disabled = permission === "denied";
+      if (permission === "granted") {
+        els.notificationStatus.textContent = "İcap değişikliklerinde bildirim gösterilecek.";
+      } else if (permission === "denied") {
+        els.notificationStatus.textContent = "Bildirim izni tarayıcı ayarlarından kapalı.";
+      } else {
+        els.notificationStatus.textContent = "İzin verirsen icap değişikliklerinde uyarı alırsın.";
+      }
+    }
+
+    async function requestNotifications() {
+      if (!("Notification" in window)) {
+        updateNotificationStatus();
+        return;
+      }
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") localStorage.setItem(notificationStorageKey, "1");
+      updateNotificationStatus();
+    }
+
+    function showToast(title, body) {
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.innerHTML = `<strong>${title}</strong><span>${body}</span>`;
+      els.toastArea.appendChild(toast);
+      window.setTimeout(() => toast.remove(), 5200);
+    }
+
+    function showShiftNotification(title, body) {
+      showToast(title, body);
+      if (!("Notification" in window) || Notification.permission !== "granted") return;
+      try {
+        new Notification(title, {
+          body,
+          tag: "vetamerikan-shift-icap",
+          renotify: true
+        });
+      } catch {
+        // Uygulama içi bildirim yine gösterildi.
+      }
+    }
+
+    function overrideInfoForKey(key) {
+      const record = overrideRecordFromKey(key);
+      if (!record) return null;
+      const dataset = allDatasets().find(item => item.id === record.month_key);
+      const source = dataset?.rows.find(row => row[2] === record.doctor_id);
+      if (!dataset || !source) return null;
+      const day = buildDays(dataset.year, dataset.monthIndex, source[3].length)[record.day - 1];
+      return {
+        dataset,
+        source,
+        day,
+        originalRaw: source[3][record.day - 1] || "",
+        name: nameFor(source[1])
+      };
+    }
+
+    function notifyIcapDiffs(previousOverrides, nextOverrides) {
+      if (!hasLoadedRemoteOverrides) return;
+      const keys = new Set([...Object.keys(previousOverrides), ...Object.keys(nextOverrides)]);
+      keys.forEach(key => {
+        if (pendingOverrideKeys.has(key)) return;
+        const info = overrideInfoForKey(key);
+        if (!info) return;
+        const previousRaw = Object.prototype.hasOwnProperty.call(previousOverrides, key)
+          ? previousOverrides[key]
+          : info.originalRaw;
+        const nextRaw = Object.prototype.hasOwnProperty.call(nextOverrides, key)
+          ? nextOverrides[key]
+          : info.originalRaw;
+        const hadIcap = hasIcap(previousRaw);
+        const hasNextIcap = hasIcap(nextRaw);
+        if (hadIcap === hasNextIcap) return;
+        const action = hasNextIcap ? "icap eklendi" : "icap kaldırıldı";
+        showShiftNotification("İcap değişikliği", `${info.name} - ${info.day.long}: ${action}.`);
+      });
+    }
+
     async function supabaseRequest(path, options = {}) {
       const method = String(options.method || "GET").toUpperCase();
       const cacheBuster = method === "GET" ? `${path.includes("?") ? "&" : "?"}_cb=${Date.now()}` : "";
@@ -1533,8 +1657,12 @@
         const localOnly = syncLocal
           ? Object.entries(overrides).filter(([key]) => !Object.prototype.hasOwnProperty.call(remoteOverrides, key))
           : [];
-        overrides = replace ? remoteOverrides : { ...overrides, ...remoteOverrides };
+        const previousOverrides = { ...overrides };
+        const nextOverrides = replace ? remoteOverrides : { ...overrides, ...remoteOverrides };
+        notifyIcapDiffs(previousOverrides, nextOverrides);
+        overrides = nextOverrides;
         saveOverrides();
+        hasLoadedRemoteOverrides = true;
         refreshAfterRemoteChange();
         if (syncLocal) localOnly.forEach(([key, value]) => syncOverrideToSupabase(key, value, false));
         if (!silent) setSupabaseStatus("Supabase bağlantısı aktif.");
@@ -1577,7 +1705,9 @@
       if (!record?.month_key || !record?.doctor_id || !record?.day) return;
       const key = overrideKey(record.month_key, record.doctor_id, record.day);
       if (pendingOverrideKeys.has(key)) return;
+      const previousOverrides = { ...overrides };
       overrides[key] = record.value || "";
+      notifyIcapDiffs(previousOverrides, overrides);
       saveOverrides();
       refreshAfterRemoteChange();
     }
@@ -2306,6 +2436,7 @@
       importCsvText(els.importText.value);
     });
     els.resetOverridesButton.addEventListener("click", resetManualOverrides);
+    els.notificationButton.addEventListener("click", requestNotifications);
     els.authForm.addEventListener("submit", event => {
       event.preventDefault();
       if (els.authScreen.classList.contains("register-mode")) {
@@ -2350,6 +2481,7 @@
     });
     renderDatasetSelect();
     renderAppVersion();
+    updateNotificationStatus();
     render();
     initAuth();
     loadSupabaseOverrides({ replace: true, syncLocal: false });
