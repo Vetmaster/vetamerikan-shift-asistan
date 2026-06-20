@@ -99,13 +99,31 @@
     }
     .auth-actions {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: 1fr;
       gap: 8px;
+    }
+    .auth-screen:not(.register-mode) .auth-actions {
+      gap: 4px;
+    }
+    .auth-screen.register-mode .auth-actions {
+      grid-template-columns: 1fr 1fr;
     }
     .auth-card .secondary-auth {
       border-color: var(--line);
       background: #fbfcfe;
       color: var(--ink);
+    }
+    .auth-screen:not(.register-mode) #showRegisterButton {
+      justify-self: end;
+      width: auto;
+      min-height: 28px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+      text-decoration: underline;
+      text-underline-offset: 3px;
     }
     .auth-error {
       min-height: 18px;
@@ -1038,7 +1056,7 @@
       <input id="authPassword" type="password" placeholder="Şifre" autocomplete="current-password">
       <div class="auth-actions">
         <button id="authLoginButton" type="submit">Giriş yap</button>
-        <button id="showRegisterButton" class="secondary-auth" type="button">Kayıt ol</button>
+        <button id="showRegisterButton" class="secondary-auth" type="button">Yeni kullanıcı oluştur.</button>
         <button id="createAccountButton" type="button">Kayıt ol</button>
         <button id="showLoginButton" class="secondary-auth" type="button">Girişe dön</button>
       </div>
@@ -1143,10 +1161,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const appUsername = "admin";
-    const appPassword = "admin";
-    const defaultUsers = {
-      hasansar: "123456"
-    };
     const authStorageKey = "vetamerikan-shift-authenticated";
     const authUserStorageKey = "vetamerikan-shift-auth-user";
     const authUsersStorageKey = "vetamerikan-shift-users";
@@ -1157,7 +1171,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.28";
+    const appVersion = "2026.06.20.32";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1404,22 +1418,8 @@
       return text.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/\p{Diacritic}/gu, "");
     }
 
-    function savedUsers() {
-      try {
-        return JSON.parse(localStorage.getItem(authUsersStorageKey) || "{}");
-      } catch {
-        return {};
-      }
-    }
-
-    function saveUsers(users) {
-      localStorage.setItem(authUsersStorageKey, JSON.stringify(users));
-    }
-
-    function isValidLogin(username, password) {
-      if (username === appUsername && password === appPassword) return true;
-      if (defaultUsers[username] === password) return true;
-      return savedUsers()[username] === password;
+    function clearLegacyUsers() {
+      localStorage.removeItem(authUsersStorageKey);
     }
 
     function authUsername(username) {
@@ -1466,6 +1466,22 @@
       saveAuth(data.user?.user_metadata?.username || username);
     }
 
+    async function migrateLegacyUser(username, password) {
+      if (username === "hasansar" && password === "123456") {
+        try {
+          await signUpWithSupabase(username, password);
+          return true;
+        } catch (error) {
+          lastAuthError = error.message;
+          return false;
+        }
+      }
+      if (username === appUsername && password === "admin") {
+        lastAuthError = "Admin kullanıcısı artık Supabase'de olmalı. Supabase'de admin için en az 6 karakterli bir şifre oluşturun.";
+      }
+      return false;
+    }
+
     function saveAuth(username) {
       localStorage.setItem(authStorageKey, "1");
       localStorage.setItem(authUserStorageKey, username);
@@ -1506,8 +1522,8 @@
     async function registerUser() {
       const username = els.authUsername.value.trim().toLocaleLowerCase("tr-TR");
       const password = els.authPassword.value;
-      if (username.length < 3 || password.length < 3) {
-        els.authError.textContent = "Kullanıcı adı ve şifre en az 3 karakter olmalı.";
+      if (username.length < 3 || password.length < 6) {
+        els.authError.textContent = "Kullanıcı adı en az 3, şifre en az 6 karakter olmalı.";
         return;
       }
       try {
@@ -1556,6 +1572,7 @@
     }
 
     async function initAuth() {
+      clearLegacyUsers();
       updateAuthStatus();
       if (supabaseClient) {
         const { data } = await supabaseClient.auth.getSession();
@@ -2893,8 +2910,7 @@
       }
       const username = els.authUsername.value.trim().toLocaleLowerCase("tr-TR");
       const password = els.authPassword.value;
-      if (await signInWithSupabase(username, password) || isValidLogin(username, password)) {
-        saveAuth(username);
+      if (await signInWithSupabase(username, password) || await migrateLegacyUser(username, password)) {
         unlockApp();
         return;
       }
