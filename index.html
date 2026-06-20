@@ -1107,7 +1107,7 @@
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.11";
+    const appVersion = "2026.06.20.16";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1286,6 +1286,7 @@
     let lastRemoteFingerprint = "";
     let lastNotificationFingerprint = "";
     let hasLoadedRemoteOverrides = false;
+    let suppressAddonNotifications = false;
     const pendingOverrideKeys = new Set();
     const els = {
       app: document.getElementById("app"),
@@ -1840,7 +1841,37 @@
       };
     }
 
-    function notifyIcapDiffs(previousOverrides, nextOverrides) {
+    function notifyAddonChangeForKey(key, previousRaw, nextRaw) {
+      const info = overrideInfoForKey(key);
+      if (!info) return;
+      const watchedAddons = [
+        { key: "ICAP", title: "İcap değişikliği", label: "icap" },
+        { key: "KEDI_SERVIS", title: "Kedi servis görevlendirmesi", label: "kedi servis" },
+        { key: "KOPEK_SERVIS", title: "Köpek servis görevlendirmesi", label: "köpek servis" },
+        { key: "ENFEKSIYON", title: "Enfeksiyon görevlendirmesi", label: "enfeksiyon" }
+      ];
+      watchedAddons.forEach(addon => {
+        const hadAddon = hasAddon(previousRaw, addon.key);
+        const hasNextAddon = hasAddon(nextRaw, addon.key);
+        if (hadAddon === hasNextAddon) return;
+        const action = hasNextAddon ? `${addon.label} görevi eklendi` : `${addon.label} görevi kaldırıldı`;
+        showShiftNotification(addon.title, `${info.name} - ${info.day.long}: ${action}.`);
+      });
+    }
+
+    function notifyIcapRangeChange(sicil, mode, firstDay, lastDay) {
+      const row = activeDataset.rows.find(items => items[2] === sicil);
+      if (!row) return;
+      const start = activeDays[firstDay - 1];
+      const end = activeDays[lastDay - 1];
+      if (!start || !end) return;
+      const name = nameFor(row[1]);
+      const dateText = firstDay === lastDay ? start.long : `${start.long} - ${end.long} arasında`;
+      const action = mode === "add" ? "icap görevi eklendi" : "icap görevi kaldırıldı";
+      showShiftNotification("İcap değişikliği", `${name} - ${dateText} ${action}.`);
+    }
+
+    function notifyAddonDiffs(previousOverrides, nextOverrides) {
       if (!hasLoadedRemoteOverrides) return;
       const keys = new Set([...Object.keys(previousOverrides), ...Object.keys(nextOverrides)]);
       keys.forEach(key => {
@@ -1853,22 +1884,8 @@
         const nextRaw = Object.prototype.hasOwnProperty.call(nextOverrides, key)
           ? nextOverrides[key]
           : info.originalRaw;
-        const hadIcap = hasIcap(previousRaw);
-        const hasNextIcap = hasIcap(nextRaw);
-        if (hadIcap === hasNextIcap) return;
-        const action = hasNextIcap ? "icap eklendi" : "icap kaldırıldı";
-        showShiftNotification("İcap değişikliği", `${info.name} - ${info.day.long}: ${action}.`);
+        notifyAddonChangeForKey(key, previousRaw, nextRaw);
       });
-    }
-
-    function notifyIcapChangeForKey(key, previousRaw, nextRaw) {
-      const hadIcap = hasIcap(previousRaw);
-      const hasNextIcap = hasIcap(nextRaw);
-      if (hadIcap === hasNextIcap) return;
-      const info = overrideInfoForKey(key);
-      if (!info) return;
-      const action = hasNextIcap ? "icap eklendi" : "icap kaldırıldı";
-      showShiftNotification("İcap değişikliği", `${info.name} - ${info.day.long}: ${action}.`);
     }
 
     async function supabaseRequest(path, options = {}) {
@@ -1924,9 +1941,7 @@
         const localOnly = syncLocal
           ? Object.entries(overrides).filter(([key]) => !Object.prototype.hasOwnProperty.call(remoteOverrides, key))
           : [];
-        const previousOverrides = { ...overrides };
         const nextOverrides = replace ? remoteOverrides : { ...overrides, ...remoteOverrides };
-        notifyIcapDiffs(previousOverrides, nextOverrides);
         overrides = nextOverrides;
         saveOverrides();
         hasLoadedRemoteOverrides = true;
@@ -1972,9 +1987,7 @@
       if (!record?.month_key || !record?.doctor_id || !record?.day) return;
       const key = overrideKey(record.month_key, record.doctor_id, record.day);
       if (pendingOverrideKeys.has(key)) return;
-      const previousOverrides = { ...overrides };
       overrides[key] = record.value || "";
-      notifyIcapDiffs(previousOverrides, overrides);
       saveOverrides();
       refreshAfterRemoteChange();
     }
@@ -2064,7 +2077,7 @@
         overrides[key] = value;
       }
       saveOverrides();
-      notifyIcapChangeForKey(key, previousRaw, nextRaw);
+      if (!suppressAddonNotifications) notifyAddonChangeForKey(key, previousRaw, nextRaw);
       syncOverrideToSupabase(key, value, false);
     }
 
@@ -2587,17 +2600,25 @@
       const schedule = row[3];
       const firstDay = Math.min(startDay, endDay);
       const lastDay = Math.max(startDay, endDay);
-      for (let day = firstDay; day <= lastDay; day += 1) {
-        const original = schedule[day - 1] || "";
-        const current = rawForRowDay(sicil, schedule, day);
-        const next = mode === "add" ? withIcap(current) : withoutIcap(current);
-        const key = rowKey(sicil, day);
-        if (next === original) {
-          saveOverrideValue(key, next, true);
-        } else {
-          saveOverrideValue(key, next);
+      let changed = false;
+      suppressAddonNotifications = true;
+      try {
+        for (let day = firstDay; day <= lastDay; day += 1) {
+          const original = schedule[day - 1] || "";
+          const current = rawForRowDay(sicil, schedule, day);
+          const next = mode === "add" ? withIcap(current) : withoutIcap(current);
+          if (hasIcap(current) !== hasIcap(next)) changed = true;
+          const key = rowKey(sicil, day);
+          if (next === original) {
+            saveOverrideValue(key, next, true);
+          } else {
+            saveOverrideValue(key, next);
+          }
         }
+      } finally {
+        suppressAddonNotifications = false;
       }
+      if (changed) notifyIcapRangeChange(sicil, mode, firstDay, lastDay);
       closeCodeMenu();
       renderAfterCodeEdit(sicil);
     }
