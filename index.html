@@ -1106,7 +1106,8 @@
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
-    const appVersion = "2026.06.20.9";
+    const notificationTable = "shift_notifications";
+    const appVersion = "2026.06.20.10";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1280,8 +1281,10 @@
     let profileEditContext = null;
     let activeProfileSicil = null;
     let supabaseRealtimeChannel = null;
+    let supabaseNotificationChannel = null;
     let supabasePollTimer = null;
     let lastRemoteFingerprint = "";
+    let lastNotificationFingerprint = "";
     let hasLoadedRemoteOverrides = false;
     const pendingOverrideKeys = new Set();
     const els = {
@@ -1650,6 +1653,15 @@
       localStorage.setItem(notificationListStorageKey, JSON.stringify(items.slice(0, 80)));
     }
 
+    function upsertLocalNotification(item) {
+      const items = savedNotifications();
+      if (items.some(existing => existing.id === item.id)) return;
+      items.unshift(item);
+      saveNotifications(items);
+      renderNotificationBadge();
+      if (!els.notificationView.hidden) renderNotificationCenter();
+    }
+
     function unreadNotificationCount() {
       return savedNotifications().filter(item => !item.read).length;
     }
@@ -1661,16 +1673,19 @@
     }
 
     function addNotification(title, body) {
-      const items = savedNotifications();
-      items.unshift({
+      const item = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         title,
         body,
         read: false,
         createdAt: new Date().toISOString()
-      });
+      };
+      const items = savedNotifications();
+      items.unshift(item);
       saveNotifications(items);
       renderNotificationBadge();
+      syncNotificationToSupabase(item);
+      return item;
     }
 
     function escapeHtml(value) {
@@ -1688,10 +1703,7 @@
       return date.toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     }
 
-    function openNotificationCenter() {
-      closeProfile();
-      closeDrawer();
-      closeCodeMenu();
+    function renderNotificationCenter() {
       const items = savedNotifications();
       els.notificationView.innerHTML = `
         <div class="profile-head-main">
@@ -1714,9 +1726,17 @@
           `).join("") : '<div class="empty">Henüz bildirim yok.</div>'}
         </div>
       `;
+      document.getElementById("notificationBackButton").addEventListener("click", closeNotificationCenter);
+    }
+
+    function openNotificationCenter() {
+      closeProfile();
+      closeDrawer();
+      closeCodeMenu();
+      renderNotificationCenter();
       els.notificationView.hidden = false;
       els.app.classList.add("notification-mode");
-      document.getElementById("notificationBackButton").addEventListener("click", closeNotificationCenter);
+      const items = savedNotifications();
       saveNotifications(items.map(item => ({ ...item, read: true })));
       renderNotificationBadge();
     }
@@ -1748,6 +1768,61 @@
       } catch {
         // Uygulama içi bildirim yine gösterildi.
       }
+    }
+
+    async function syncNotificationToSupabase(item) {
+      try {
+        await supabaseRequest(`${notificationTable}?on_conflict=id`, {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify({
+            id: item.id,
+            title: item.title,
+            body: item.body,
+            created_at: item.createdAt
+          })
+        });
+      } catch (error) {
+        els.notificationStatus.textContent = `Bildirim Supabase'e yazılamadı: ${error.message}`;
+      }
+    }
+
+    function notificationFromRecord(record) {
+      return {
+        id: String(record.id),
+        title: record.title || "Bildirim",
+        body: record.body || "",
+        read: savedNotifications().find(item => item.id === String(record.id))?.read || false,
+        createdAt: record.created_at || new Date().toISOString()
+      };
+    }
+
+    async function loadSupabaseNotifications({ silent = false } = {}) {
+      try {
+        const records = await supabaseRequest(`${notificationTable}?select=id,title,body,created_at&order=created_at.desc&limit=80`);
+        if (!Array.isArray(records)) return;
+        const fingerprint = JSON.stringify(records.map(record => [record.id, record.title, record.body, record.created_at]));
+        if (fingerprint === lastNotificationFingerprint && silent) return;
+        lastNotificationFingerprint = fingerprint;
+        const localItems = savedNotifications();
+        const readState = new Map(localItems.map(item => [item.id, item.read]));
+        const remoteItems = records.map(record => ({
+          ...notificationFromRecord(record),
+          read: readState.get(String(record.id)) || false
+        }));
+        saveNotifications(remoteItems);
+        renderNotificationBadge();
+        if (!els.notificationView.hidden) renderNotificationCenter();
+      } catch (error) {
+        if (!silent) els.notificationStatus.textContent = `Bildirimler alınamadı: ${error.message}`;
+      }
+    }
+
+    function handleSupabaseNotification(payload) {
+      if (payload.eventType !== "INSERT" || !payload.new?.id) return;
+      const item = notificationFromRecord(payload.new);
+      upsertLocalNotification(item);
+      showToast(item.title, item.body);
     }
 
     function overrideInfoForKey(key) {
@@ -1921,12 +1996,23 @@
         if (status === "SUBSCRIBED") setSupabaseStatus("Supabase realtime aktif.");
         if (status === "CHANNEL_ERROR") setSupabaseStatus("Supabase realtime bağlantısı kurulamadı.");
       });
+      supabaseNotificationChannel = supabaseClient
+        .channel("shift-notifications-realtime")
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: notificationTable
+        }, handleSupabaseNotification)
+        .subscribe(status => {
+          if (status === "CHANNEL_ERROR") els.notificationStatus.textContent = "Bildirim realtime bağlantısı kurulamadı.";
+        });
     }
 
     function startSupabasePollingFallback() {
       if (supabasePollTimer) window.clearTimeout(supabasePollTimer);
       const poll = async () => {
         await loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
+        await loadSupabaseNotifications({ silent: true });
         supabasePollTimer = window.setTimeout(poll, document.hidden ? 5000 : 1500);
       };
       supabasePollTimer = window.setTimeout(poll, 1500);
@@ -1934,10 +2020,12 @@
 
     function syncWhenAppBecomesActive() {
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
+      loadSupabaseNotifications({ silent: true });
     }
 
     function forceSupabaseRefresh() {
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: false });
+      loadSupabaseNotifications({ silent: false });
     }
 
     function renderAppVersion() {
@@ -2689,6 +2777,7 @@
     render();
     initAuth();
     loadSupabaseOverrides({ replace: true, syncLocal: false });
+    loadSupabaseNotifications({ silent: false });
     startSupabaseRealtime();
     startSupabasePollingFallback();
   </script>
