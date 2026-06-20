@@ -534,7 +534,12 @@
     .app.profile-mode .summary,
     .app.profile-mode .search,
     .app.profile-mode .day-strip,
-    .app.profile-mode #doctorList {
+    .app.profile-mode #doctorList,
+    .app.notification-mode .shift-tabs,
+    .app.notification-mode .summary,
+    .app.notification-mode .search,
+    .app.notification-mode .day-strip,
+    .app.notification-mode #doctorList {
       display: none;
     }
     .profile-view {
@@ -671,6 +676,74 @@
       font-size: 22px;
       line-height: 1;
       font-weight: 900;
+    }
+    .notification-icon-button {
+      position: relative;
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      display: inline-grid;
+      place-items: center;
+    }
+    .notification-icon-button svg {
+      width: 21px;
+      height: 21px;
+      stroke: currentColor;
+      stroke-width: 2.3;
+      fill: none;
+    }
+    .notification-count {
+      position: absolute;
+      top: -7px;
+      right: -7px;
+      min-width: 20px;
+      height: 20px;
+      padding: 0 5px;
+      border: 2px solid var(--paper);
+      border-radius: 999px;
+      background: #d92d20;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 900;
+      line-height: 16px;
+      text-align: center;
+    }
+    .notification-count[hidden] {
+      display: none;
+    }
+    .notification-list {
+      display: grid;
+      gap: 10px;
+    }
+    .notification-item {
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-left: 5px solid var(--brand);
+      border-radius: 8px;
+      background: var(--panel);
+      display: grid;
+      gap: 4px;
+    }
+    .notification-item.unread {
+      background: var(--soft);
+      border-color: rgba(15, 108, 116, .34);
+    }
+    .notification-item strong {
+      font-size: 14px;
+    }
+    .notification-item p {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .notification-time {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
     }
     .drawer-backdrop {
       position: fixed;
@@ -887,11 +960,12 @@
     .toast {
       width: min(520px, 100%);
       margin: 0 auto;
-      padding: 12px 14px;
-      border: 1px solid rgba(15, 108, 116, .24);
+      padding: 13px 15px 13px 18px;
+      border: 1px solid rgba(15, 108, 116, .42);
+      border-left: 6px solid var(--brand);
       border-radius: 8px;
-      background: rgba(255, 255, 255, .98);
-      box-shadow: var(--shadow);
+      background: #e8f5f5;
+      box-shadow: 0 14px 34px rgba(20, 33, 61, .18);
       color: var(--ink);
       font-size: 13px;
       line-height: 1.35;
@@ -931,6 +1005,13 @@
         <div class="brand-actions">
           <select id="monthSelect" class="month-select" aria-label="Ay seç"></select>
           <span id="userBadge" class="user-badge"></span>
+          <button id="notificationCenterButton" class="notification-icon-button" type="button" aria-label="Bildirimler">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+              <path d="M10 21h4"></path>
+            </svg>
+            <span id="notificationCount" class="notification-count" hidden>0</span>
+          </button>
           <button id="menuButton" class="menu-button" type="button" aria-label="Menü">☰</button>
         </div>
       </div>
@@ -971,6 +1052,7 @@
 
     <section id="doctorList" class="card"></section>
     <section id="profileView" class="profile-view card" hidden></section>
+    <section id="notificationView" class="profile-view card" hidden></section>
   </main>
 
   <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
@@ -1020,10 +1102,11 @@
     const authUserStorageKey = "vetamerikan-shift-auth-user";
     const authUsersStorageKey = "vetamerikan-shift-users";
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
+    const notificationListStorageKey = "vetamerikan-shift-notification-list";
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
-    const appVersion = "2026.06.20.7";
+    const appVersion = "2026.06.20.9";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1233,6 +1316,9 @@
       ruleLabel: document.getElementById("ruleLabel"),
       doctorList: document.getElementById("doctorList"),
       profileView: document.getElementById("profileView"),
+      notificationView: document.getElementById("notificationView"),
+      notificationCenterButton: document.getElementById("notificationCenterButton"),
+      notificationCount: document.getElementById("notificationCount"),
       monthSelect: document.getElementById("monthSelect"),
       importMonth: document.getElementById("importMonth"),
       importFile: document.getElementById("importFile"),
@@ -1552,6 +1638,95 @@
       els.notificationStatus.textContent = "Test bildirimi gönderildi.";
     }
 
+    function savedNotifications() {
+      try {
+        return JSON.parse(localStorage.getItem(notificationListStorageKey) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveNotifications(items) {
+      localStorage.setItem(notificationListStorageKey, JSON.stringify(items.slice(0, 80)));
+    }
+
+    function unreadNotificationCount() {
+      return savedNotifications().filter(item => !item.read).length;
+    }
+
+    function renderNotificationBadge() {
+      const count = unreadNotificationCount();
+      els.notificationCount.hidden = count < 1;
+      els.notificationCount.textContent = count > 99 ? "99+" : String(count);
+    }
+
+    function addNotification(title, body) {
+      const items = savedNotifications();
+      items.unshift({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        title,
+        body,
+        read: false,
+        createdAt: new Date().toISOString()
+      });
+      saveNotifications(items);
+      renderNotificationBadge();
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function notificationTimeLabel(createdAt) {
+      const date = new Date(createdAt);
+      if (Number.isNaN(date.getTime())) return "";
+      return date.toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
+    }
+
+    function openNotificationCenter() {
+      closeProfile();
+      closeDrawer();
+      closeCodeMenu();
+      const items = savedNotifications();
+      els.notificationView.innerHTML = `
+        <div class="profile-head-main">
+          <button id="notificationBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+          <div class="profile-identity">
+            <h2 class="profile-name">Bildirimler</h2>
+            <div class="profile-meta">
+              <span class="tag">${items.length} bildirim</span>
+              <span class="tag">${items.filter(item => !item.read).length} okunmamış</span>
+            </div>
+          </div>
+        </div>
+        <div class="notification-list">
+          ${items.length ? items.map(item => `
+            <article class="notification-item${item.read ? "" : " unread"}">
+              <strong>${escapeHtml(item.title)}</strong>
+              <p>${escapeHtml(item.body)}</p>
+              <span class="notification-time">${escapeHtml(notificationTimeLabel(item.createdAt))}</span>
+            </article>
+          `).join("") : '<div class="empty">Henüz bildirim yok.</div>'}
+        </div>
+      `;
+      els.notificationView.hidden = false;
+      els.app.classList.add("notification-mode");
+      document.getElementById("notificationBackButton").addEventListener("click", closeNotificationCenter);
+      saveNotifications(items.map(item => ({ ...item, read: true })));
+      renderNotificationBadge();
+    }
+
+    function closeNotificationCenter() {
+      els.app.classList.remove("notification-mode");
+      els.notificationView.hidden = true;
+      els.notificationView.innerHTML = "";
+    }
+
     function showToast(title, body) {
       const toast = document.createElement("div");
       toast.className = "toast";
@@ -1561,6 +1736,7 @@
     }
 
     function showShiftNotification(title, body) {
+      addNotification(title, body);
       showToast(title, body);
       if (!("Notification" in window) || Notification.permission !== "granted") return;
       try {
@@ -2043,6 +2219,7 @@
     function openProfile(sicil) {
       const row = profileRowForSicil(sicil);
       if (!row) return;
+      closeNotificationCenter();
       activeProfileSicil = sicil;
       const entries = profileEntries(row);
       const stats = profileStats(entries);
@@ -2246,6 +2423,7 @@
 
     function goHome() {
       closeProfile();
+      closeNotificationCenter();
       closeDrawer();
       closeCodeMenu();
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -2488,6 +2666,7 @@
       selectDataset(els.monthSelect.value);
     });
     els.homeButton.addEventListener("click", goHome);
+    els.notificationCenterButton.addEventListener("click", openNotificationCenter);
     els.menuButton.addEventListener("click", openDrawer);
     els.drawerClose.addEventListener("click", closeDrawer);
     els.drawerBackdrop.addEventListener("click", closeDrawer);
@@ -2505,6 +2684,7 @@
     });
     renderDatasetSelect();
     renderAppVersion();
+    renderNotificationBadge();
     updateNotificationStatus();
     render();
     initAuth();
