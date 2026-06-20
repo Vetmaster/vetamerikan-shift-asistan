@@ -1023,7 +1023,7 @@
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
-    const appVersion = "2026.06.20.6";
+    const appVersion = "2026.06.20.7";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1611,6 +1611,16 @@
       });
     }
 
+    function notifyIcapChangeForKey(key, previousRaw, nextRaw) {
+      const hadIcap = hasIcap(previousRaw);
+      const hasNextIcap = hasIcap(nextRaw);
+      if (hadIcap === hasNextIcap) return;
+      const info = overrideInfoForKey(key);
+      if (!info) return;
+      const action = hasNextIcap ? "icap eklendi" : "icap kaldırıldı";
+      showShiftNotification("İcap değişikliği", `${info.name} - ${info.day.long}: ${action}.`);
+    }
+
     async function supabaseRequest(path, options = {}) {
       const method = String(options.method || "GET").toUpperCase();
       const cacheBuster = method === "GET" ? `${path.includes("?") ? "&" : "?"}_cb=${Date.now()}` : "";
@@ -1780,12 +1790,18 @@
     }
 
     function saveOverrideValue(key, value, remove = false) {
+      const info = overrideInfoForKey(key);
+      const previousRaw = Object.prototype.hasOwnProperty.call(overrides, key)
+        ? overrides[key]
+        : info?.originalRaw || "";
+      const nextRaw = remove ? info?.originalRaw || "" : value;
       if (remove) {
         delete overrides[key];
       } else {
         overrides[key] = value;
       }
       saveOverrides();
+      notifyIcapChangeForKey(key, previousRaw, nextRaw);
       syncOverrideToSupabase(key, value, false);
     }
 
