@@ -976,6 +976,47 @@
       margin-bottom: 2px;
       font-size: 14px;
     }
+    .notification-permission {
+      position: fixed;
+      left: 12px;
+      right: 12px;
+      bottom: calc(12px + env(safe-area-inset-bottom));
+      z-index: 85;
+      width: min(520px, calc(100% - 24px));
+      margin: 0 auto;
+      padding: 14px;
+      border: 1px solid rgba(15, 108, 116, .38);
+      border-left: 6px solid var(--brand);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: 0 14px 34px rgba(20, 33, 61, .18);
+      display: grid;
+      gap: 10px;
+    }
+    .notification-permission p {
+      margin: 0;
+      color: var(--ink);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .notification-permission-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .notification-permission button {
+      min-height: 40px;
+      border: 1px solid var(--brand);
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 900;
+    }
+    .notification-permission .secondary-auth {
+      border-color: var(--line);
+      background: #fbfcfe;
+      color: var(--ink);
+    }
     .admin-only[hidden] { display: none !important; }
     [hidden] { display: none !important; }
   </style>
@@ -1062,20 +1103,13 @@
       <button id="drawerClose" class="drawer-close" type="button" aria-label="Kapat">×</button>
     </div>
     <div class="import-body">
-      <div id="adminDatabaseTools" class="admin-only">
-        <input id="importMonth" type="month" value="2026-07">
-        <input id="importFile" type="file" accept=".csv,.txt,text/*,text/csv,application/csv,application/vnd.ms-excel,application/octet-stream">
-        <button id="importButton" type="button">CSV yükle ve aç</button>
-        <textarea id="importText" placeholder="CSV içeriğini buraya yapıştır"></textarea>
-        <button id="importTextButton" type="button">Yapıştırılan CSV'yi aç</button>
-        <select id="datasetSelect" aria-label="Ay seç"></select>
-        <button id="resetOverridesButton" type="button">Manuel değişiklikleri sıfırla</button>
+      <div id="excelDatabaseTools" class="admin-only">
+        <input id="excelFile" type="file" accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+        <button id="excelImportButton" type="button">Excel yükle ve database oluştur</button>
         <div id="importStatus" class="import-status"></div>
       </div>
-      <button id="notificationButton" type="button">Bildirimlere izin ver</button>
-      <button id="notificationTestButton" type="button">Bildirim testi</button>
-      <div id="notificationStatus" class="import-status"></div>
-      <div id="appVersionLabel" class="import-status"></div>
+      <div id="notificationStatus" class="import-status" hidden></div>
+      <div id="appVersionLabel" class="import-status" hidden></div>
       <button id="logoutButton" type="button">Çıkış yap</button>
     </div>
   </aside>
@@ -1090,7 +1124,15 @@
   </div>
 
   <div id="toastArea" class="toast-area" aria-live="polite" aria-atomic="true"></div>
+  <div id="notificationPermissionPrompt" class="notification-permission" hidden>
+    <p><strong>Bildirimlere izin ver</strong><br>İcap ve görev değişikliklerinde sistem bildirimi almak için izin ver.</p>
+    <div class="notification-permission-actions">
+      <button id="notificationPromptAllow" type="button">İzin ver</button>
+      <button id="notificationPromptDismiss" class="secondary-auth" type="button">Sonra</button>
+    </div>
+  </div>
 
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const appUsername = "admin";
@@ -1106,8 +1148,9 @@
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
+    const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.16";
+    const appVersion = "2026.06.20.25";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1183,7 +1226,7 @@
       overrides = {};
     }
 
-    const datasetStorageKey = "vetamerikan-shift-csv-datasets";
+    const datasetStorageKey = "vetamerikan-shift-custom-datasets";
     const removedJulyDatasetKey = "vetamerikan-shift-removed-temmuz-2026";
     let customDatasets = [];
     try {
@@ -1324,19 +1367,12 @@
       notificationCenterButton: document.getElementById("notificationCenterButton"),
       notificationCount: document.getElementById("notificationCount"),
       monthSelect: document.getElementById("monthSelect"),
-      importMonth: document.getElementById("importMonth"),
-      importFile: document.getElementById("importFile"),
-      importButton: document.getElementById("importButton"),
-      importText: document.getElementById("importText"),
-      importTextButton: document.getElementById("importTextButton"),
-      resetOverridesButton: document.getElementById("resetOverridesButton"),
-      adminDatabaseTools: document.getElementById("adminDatabaseTools"),
-      notificationButton: document.getElementById("notificationButton"),
-      notificationTestButton: document.getElementById("notificationTestButton"),
       notificationStatus: document.getElementById("notificationStatus"),
       appVersionLabel: document.getElementById("appVersionLabel"),
+      excelDatabaseTools: document.getElementById("excelDatabaseTools"),
+      excelFile: document.getElementById("excelFile"),
+      excelImportButton: document.getElementById("excelImportButton"),
       logoutButton: document.getElementById("logoutButton"),
-      datasetSelect: document.getElementById("datasetSelect"),
       importStatus: document.getElementById("importStatus"),
       menuButton: document.getElementById("menuButton"),
       drawer: document.getElementById("drawer"),
@@ -1348,7 +1384,10 @@
       codeMenuTitle: document.getElementById("codeMenuTitle"),
       codeMenuOptions: document.getElementById("codeMenuOptions"),
       codeMenuClose: document.getElementById("codeMenuClose"),
-      toastArea: document.getElementById("toastArea")
+      toastArea: document.getElementById("toastArea"),
+      notificationPermissionPrompt: document.getElementById("notificationPermissionPrompt"),
+      notificationPromptAllow: document.getElementById("notificationPromptAllow"),
+      notificationPromptDismiss: document.getElementById("notificationPromptDismiss")
     };
 
     function norm(text) {
@@ -1401,7 +1440,7 @@
     }
 
     function updateAdminVisibility() {
-      els.adminDatabaseTools.hidden = !isAdminUser();
+      els.excelDatabaseTools.hidden = !isAdminUser();
     }
 
     function registerUser() {
@@ -1436,6 +1475,7 @@
       document.body.classList.remove("locked");
       updateUserBadge();
       updateAdminVisibility();
+      updateNotificationStatus();
       els.authUsername.value = "";
       els.authPassword.value = "";
       els.authError.textContent = "";
@@ -1449,6 +1489,7 @@
       updateUserBadge();
       updateAdminVisibility();
       document.body.classList.add("locked");
+      updateNotificationPermissionPrompt();
       requestAnimationFrame(() => els.authUsername.focus());
     }
 
@@ -1609,15 +1650,21 @@
       if (els.importStatus) els.importStatus.textContent = message;
     }
 
+    function updateNotificationPermissionPrompt() {
+      if (!els.notificationPermissionPrompt) return;
+      const shouldAsk = !document.body.classList.contains("locked")
+        && "Notification" in window
+        && Notification.permission === "default";
+      els.notificationPermissionPrompt.hidden = !shouldAsk;
+    }
+
     function updateNotificationStatus() {
       if (!("Notification" in window)) {
-        els.notificationButton.disabled = true;
         els.notificationStatus.textContent = "Sistem bildirimi desteklenmiyor; uygulama içi bildirim kullanılacak.";
+        updateNotificationPermissionPrompt();
         return;
       }
       const permission = Notification.permission;
-      els.notificationButton.textContent = permission === "granted" ? "Bildirimler açık" : "Bildirimlere izin ver";
-      els.notificationButton.disabled = permission === "denied";
       if (permission === "granted") {
         els.notificationStatus.textContent = "Sistem ve uygulama içi bildirim açık.";
       } else if (permission === "denied") {
@@ -1625,6 +1672,7 @@
       } else {
         els.notificationStatus.textContent = "İzin verirsen sistem bildirimi de gösterilir.";
       }
+      updateNotificationPermissionPrompt();
     }
 
     async function requestNotifications() {
@@ -1637,9 +1685,8 @@
       updateNotificationStatus();
     }
 
-    function testNotifications() {
-      showShiftNotification("Bildirim testi", "Vetamerikan Shift Asistan bildirimleri çalışıyor.");
-      els.notificationStatus.textContent = "Test bildirimi gönderildi.";
+    function dismissNotificationPrompt() {
+      els.notificationPermissionPrompt.hidden = true;
     }
 
     function savedNotifications() {
@@ -1889,9 +1936,7 @@
     }
 
     async function supabaseRequest(path, options = {}) {
-      const method = String(options.method || "GET").toUpperCase();
-      const cacheBuster = method === "GET" ? `${path.includes("?") ? "&" : "?"}_cb=${Date.now()}` : "";
-      const response = await fetch(`${supabaseUrl}/rest/v1/${path}${cacheBuster}`, {
+      const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
         ...options,
         cache: "no-store",
         headers: {
@@ -2044,27 +2089,6 @@
       els.appVersionLabel.textContent = `Sürüm ${appVersion}`;
     }
 
-    async function resetSupabaseOverrides() {
-      try {
-        await supabaseRequest(`${supabaseTable}?id=not.is.null`, { method: "DELETE" });
-      } catch (error) {
-        if (els.importStatus) els.importStatus.textContent = "Yerel kayıtlar silindi, Supabase sıfırlanamadı.";
-      }
-    }
-
-    function resetManualOverrides() {
-      const confirmed = window.confirm("Tüm manuel şift/icap/servis değişiklikleri silinsin mi?");
-      if (!confirmed) return;
-      overrides = {};
-      localStorage.removeItem(overrideStorageKey);
-      resetSupabaseOverrides();
-      profileEditContext = null;
-      closeCodeMenu();
-      closeProfile();
-      render();
-      els.importStatus.textContent = "Manuel değişiklikler sıfırlandı.";
-    }
-
     function saveOverrideValue(key, value, remove = false) {
       const info = overrideInfoForKey(key);
       const previousRaw = Object.prototype.hasOwnProperty.call(overrides, key)
@@ -2104,77 +2128,176 @@
       return date.getDate();
     }
 
+    function allDatasets() {
+      const custom = customDatasets.filter(dataset => dataset.id !== julyDataset.id && dataset.label !== julyDataset.label);
+      const customLabels = new Set(custom.map(dataset => dataset.label));
+      const builtIns = [builtInDataset, julyDataset].filter(dataset => !customLabels.has(dataset.label));
+      return [...builtIns, ...custom];
+    }
+
     function saveDatasets() {
       localStorage.setItem(datasetStorageKey, JSON.stringify(customDatasets));
     }
 
-    function allDatasets() {
-      const custom = customDatasets.filter(dataset => dataset.id !== julyDataset.id && dataset.label !== julyDataset.label);
-      return [builtInDataset, julyDataset, ...custom];
-    }
-
-    function parseCsv(text) {
-      const parsed = [];
-      let row = [];
-      let value = "";
-      let quoted = false;
-      for (let i = 0; i < text.length; i += 1) {
-        const char = text[i];
-        const next = text[i + 1];
-        if (quoted) {
-          if (char === '"' && next === '"') {
-            value += '"';
-            i += 1;
-          } else if (char === '"') {
-            quoted = false;
-          } else {
-            value += char;
-          }
-        } else if (char === '"') {
-          quoted = true;
-        } else if (char === "," || char === ";") {
-          row.push(value.trim());
-          value = "";
-        } else if (char === "\n") {
-          row.push(value.trim());
-          parsed.push(row);
-          row = [];
-          value = "";
-        } else if (char !== "\r") {
-          value += char;
-        }
+    async function syncDatasetToSupabase(dataset) {
+      try {
+        await supabaseRequest(`${datasetTable}?on_conflict=id`, {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+          body: JSON.stringify({
+            id: dataset.id,
+            label: dataset.label,
+            year: dataset.year,
+            month_index: dataset.monthIndex,
+            rows: dataset.rows
+          })
+        });
+      } catch (error) {
+        els.importStatus.textContent = `${dataset.label} bu cihazda oluşturuldu, Supabase'e yazılamadı.`;
       }
-      row.push(value.trim());
-      parsed.push(row);
-      return parsed.filter(items => items.some(Boolean));
     }
 
-    function csvToRows(text) {
-      const parsed = parseCsv(text);
-      const body = parsed[0]?.some(cell => /ad|soyad|sicil|bölüm|bolum/i.test(cell))
-        ? parsed.slice(1)
-        : parsed;
-      return body
-        .filter(row => row[1])
-        .map(row => [
-          row[0] || "Genel",
-          row[1] || "",
-          row[2] || "",
-          row.slice(4).map(cell => cell.trim())
-        ]);
+    async function loadSupabaseDatasets({ silent = true } = {}) {
+      try {
+        const records = await supabaseRequest(`${datasetTable}?select=id,label,year,month_index,rows&order=year.asc,month_index.asc`);
+        if (!Array.isArray(records)) return;
+        const remoteDatasets = records
+          .filter(record => Array.isArray(record.rows))
+          .map(record => ({
+            id: record.id,
+            label: record.label,
+            year: Number(record.year),
+            monthIndex: Number(record.month_index),
+            rows: record.rows
+          }));
+        const remoteKeys = new Set(remoteDatasets.map(dataset => `${dataset.id}|${dataset.label}`));
+        const localOnly = customDatasets.filter(dataset => !remoteKeys.has(`${dataset.id}|${dataset.label}`));
+        customDatasets = [...remoteDatasets, ...localOnly];
+        saveDatasets();
+        renderDatasetSelect();
+      } catch (error) {
+        if (!silent) els.importStatus.textContent = `Database listesi alınamadı: ${error.message}`;
+      }
+    }
+
+    function cleanExcelCell(value) {
+      return String(value ?? "").replace(/\s+/g, " ").trim();
+    }
+
+    function normalizeShiftValue(value) {
+      const text = cleanExcelCell(value).replace(/[–—]/g, "-");
+      if (!text) return "";
+      const upper = text.toLocaleUpperCase("tr-TR");
+      if (upper === "S" || upper === "A" || upper === "DG") return upper;
+      return text.replace(/\s/g, "");
+    }
+
+    function inferMonthFromText(text) {
+      const normalized = norm(text || "");
+      const months = [
+        ["ocak", 0], ["subat", 1], ["mart", 2], ["nisan", 3], ["mayis", 4], ["haziran", 5],
+        ["temmuz", 6], ["agustos", 7], ["eylul", 8], ["ekim", 9], ["kasim", 10], ["aralik", 11]
+      ];
+      const month = months.find(([name]) => normalized.includes(name));
+      const yearMatch = normalized.match(/20\d{2}/);
+      if (!month || !yearMatch) return null;
+      return { year: Number(yearMatch[0]), monthIndex: month[1] };
+    }
+
+    function excelRowsToDataset(sheetRows, fileName) {
+      const allText = `${fileName || ""} ${sheetRows.slice(0, 8).flat().join(" ")}`;
+      const monthInfo = inferMonthFromText(allText);
+      if (!monthInfo) throw new Error("Excel içinde ay/yıl bilgisi bulunamadı.");
+      const dayRowIndex = sheetRows.findIndex(row => row.filter(cell => {
+        const number = Number(cleanExcelCell(cell));
+        return Number.isInteger(number) && number >= 1 && number <= 31;
+      }).length >= 10);
+      if (dayRowIndex < 0) throw new Error("Gün başlıkları bulunamadı.");
+      const dayCols = sheetRows[dayRowIndex]
+        .map((cell, index) => ({ day: Number(cleanExcelCell(cell)), index }))
+        .filter(item => Number.isInteger(item.day) && item.day >= 1 && item.day <= 31)
+        .sort((a, b) => a.day - b.day);
+      const firstDayCol = Math.min(...dayCols.map(item => item.index));
+      const headerCandidates = sheetRows.slice(Math.max(0, dayRowIndex - 3), dayRowIndex + 1);
+      let nameCol = 0;
+      let sicilCol = 1;
+      headerCandidates.forEach(row => {
+        row.slice(0, firstDayCol).forEach((cell, index) => {
+          const value = norm(cleanExcelCell(cell));
+          if (value.includes("ad") && value.includes("soy")) nameCol = index;
+          if (value.includes("sicil")) sicilCol = index;
+        });
+      });
+      let currentSection = "Genel Muayene";
+      const parsedRows = [];
+      sheetRows.slice(dayRowIndex + 1).forEach(row => {
+        const name = cleanExcelCell(row[nameCol]);
+        if (!name) return;
+        const sicil = cleanExcelCell(row[sicilCol]);
+        const schedule = dayCols.map(item => normalizeShiftValue(row[item.index]));
+        const hasSchedule = schedule.some(Boolean);
+        const looksLikeDoctor = Boolean(sicil) || hasSchedule;
+        if (!looksLikeDoctor) {
+          currentSection = name;
+          return;
+        }
+        if (/adi soyadi|sicil|ise giris/i.test(norm(name))) return;
+        parsedRows.push([currentSection, name, sicil || `excel-${parsedRows.length + 1}`, schedule]);
+      });
+      if (!parsedRows.length) throw new Error("Excel içinde hekim satırı bulunamadı.");
+      const label = labelForMonth(monthInfo.year, monthInfo.monthIndex);
+      return {
+        id: `excel-${monthInfo.year}-${String(monthInfo.monthIndex + 1).padStart(2, "0")}`,
+        label,
+        year: monthInfo.year,
+        monthIndex: monthInfo.monthIndex,
+        rows: parsedRows
+      };
+    }
+
+    function importExcelFile() {
+      const file = els.excelFile.files[0];
+      if (!file) {
+        els.importStatus.textContent = "Excel dosyası seç.";
+        return;
+      }
+      if (!window.XLSX) {
+        els.importStatus.textContent = "Excel okuyucu yüklenemedi.";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        try {
+          const workbook = XLSX.read(reader.result, { type: "array" });
+          const sheet = workbook.Sheets[workbook.SheetNames[0]];
+          const sheetRows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: false, defval: "" });
+          const dataset = excelRowsToDataset(sheetRows, file.name);
+          customDatasets = customDatasets.filter(item => item.label !== dataset.label && item.id !== dataset.id);
+          customDatasets.unshift(dataset);
+          saveDatasets();
+          syncDatasetToSupabase(dataset);
+          els.excelFile.value = "";
+          els.importStatus.textContent = `${dataset.label} oluşturuldu: ${dataset.rows.length} hekim.`;
+          selectDataset(dataset.id);
+          closeDrawer();
+        } catch (error) {
+          els.importStatus.textContent = `Excel okunamadı: ${error.message}`;
+        }
+      };
+      reader.onerror = () => {
+        els.importStatus.textContent = "Excel dosyası açılamadı.";
+      };
+      reader.readAsArrayBuffer(file);
     }
 
     function renderDatasetSelect() {
-      els.datasetSelect.innerHTML = "";
       els.monthSelect.innerHTML = "";
       allDatasets().forEach(dataset => {
         const option = document.createElement("option");
         option.value = dataset.id;
         option.textContent = dataset.label;
-        els.datasetSelect.appendChild(option);
-        els.monthSelect.appendChild(option.cloneNode(true));
+        els.monthSelect.appendChild(option);
       });
-      els.datasetSelect.value = activeDataset.id;
       els.monthSelect.value = activeDataset.id;
     }
 
@@ -2387,45 +2510,6 @@
       if (!queryText.trim()) return state.shift;
       if (rowsForShift(state.shift, queryText).length) return state.shift;
       return shiftOrder.find(shift => rowsForShift(shift, queryText).length) || state.shift;
-    }
-
-    function importCsvText(text) {
-      const monthValue = els.importMonth.value;
-      if (!monthValue) {
-        els.importStatus.textContent = "Ay seçimi gerekli.";
-        return;
-      }
-      if (!text.trim()) {
-        els.importStatus.textContent = "CSV içeriği bulunamadı.";
-        return;
-      }
-      const [yearText, monthText] = monthValue.split("-");
-      const year = Number(yearText);
-      const monthIndex = Number(monthText) - 1;
-      const label = labelForMonth(year, monthIndex);
-      try {
-        const importedRows = csvToRows(text);
-        if (!importedRows.length) {
-          els.importStatus.textContent = "CSV içinde vardiya satırı bulunamadı.";
-          return;
-        }
-        const dataset = {
-          id: `dataset-${Date.now()}`,
-          label,
-          year,
-          monthIndex,
-          rows: importedRows
-        };
-        customDatasets = customDatasets.filter(item => item.label !== label);
-        customDatasets.unshift(dataset);
-        saveDatasets();
-        els.importFile.value = "";
-        els.importText.value = "";
-        els.importStatus.textContent = `${label} yüklendi: ${importedRows.length} hekim.`;
-        selectDataset(dataset.id);
-      } catch {
-        els.importStatus.textContent = "CSV okunamadı.";
-      }
     }
 
     function renderDays() {
@@ -2726,27 +2810,9 @@
       profileEditContext = null;
       closeCodeMenu();
     });
-    els.importButton.addEventListener("click", () => {
-      const file = els.importFile.files[0];
-      if (!file || !els.importMonth.value) {
-        els.importStatus.textContent = "Ay seçimi ve CSV dosyası gerekli.";
-        return;
-      }
-      const reader = new FileReader();
-      reader.onload = () => {
-        importCsvText(String(reader.result || ""));
-      };
-      reader.onerror = () => {
-        els.importStatus.textContent = "CSV dosyası açılamadı.";
-      };
-      reader.readAsText(file, "utf-8");
-    });
-    els.importTextButton.addEventListener("click", () => {
-      importCsvText(els.importText.value);
-    });
-    els.resetOverridesButton.addEventListener("click", resetManualOverrides);
-    els.notificationButton.addEventListener("click", requestNotifications);
-    els.notificationTestButton.addEventListener("click", testNotifications);
+    els.notificationPromptAllow.addEventListener("click", requestNotifications);
+    els.notificationPromptDismiss.addEventListener("click", dismissNotificationPrompt);
+    els.excelImportButton.addEventListener("click", importExcelFile);
     els.authForm.addEventListener("submit", event => {
       event.preventDefault();
       if (els.authScreen.classList.contains("register-mode")) {
@@ -2767,9 +2833,6 @@
     els.showLoginButton.addEventListener("click", showLoginScreen);
     els.createAccountButton.addEventListener("click", registerUser);
     els.logoutButton.addEventListener("click", lockApp);
-    els.datasetSelect.addEventListener("change", () => {
-      selectDataset(els.datasetSelect.value);
-    });
     els.monthSelect.addEventListener("change", () => {
       selectDataset(els.monthSelect.value);
     });
@@ -2796,6 +2859,7 @@
     updateNotificationStatus();
     render();
     initAuth();
+    loadSupabaseDatasets({ silent: true });
     loadSupabaseOverrides({ replace: true, syncLocal: false });
     loadSupabaseNotifications({ silent: false });
     startSupabaseRealtime();
