@@ -1,0 +1,2360 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
+  <title>Vetamerikan Shift Asistan</title>
+  <style>
+    :root {
+      --ink: #14213d;
+      --muted: #667085;
+      --line: #d9dee8;
+      --paper: #f6f8fb;
+      --panel: #fff;
+      --brand: #0f6c74;
+      --morning: #f7c948;
+      --evening: #ef8354;
+      --midshift: #9b5de5;
+      --night: #4b5bbf;
+      --icap: #83c8dc;
+      --off: #8a4fff;
+      --soft: #e8f5f5;
+      --shadow: 0 10px 26px rgba(20, 33, 61, .09);
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--ink);
+      background: var(--paper);
+      letter-spacing: 0;
+      overflow: hidden;
+    }
+    button, input, select { font: inherit; }
+    body.locked .app,
+    body.locked .drawer,
+    body.locked .drawer-backdrop,
+    body.locked .code-menu,
+    body.locked .code-menu-backdrop {
+      display: none !important;
+    }
+    .auth-screen {
+      min-height: 100svh;
+      display: grid;
+      place-items: center;
+      padding: 18px;
+    }
+    body:not(.locked) .auth-screen {
+      display: none;
+    }
+    .auth-screen.register-mode .login-copy,
+    .auth-screen.register-mode #authLoginButton,
+    .auth-screen.register-mode #showRegisterButton,
+    .auth-screen:not(.register-mode) .register-copy,
+    .auth-screen:not(.register-mode) #createAccountButton,
+    .auth-screen:not(.register-mode) #showLoginButton {
+      display: none;
+    }
+    .auth-card {
+      width: min(420px, 100%);
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      display: grid;
+      gap: 12px;
+    }
+    .auth-card h1 {
+      font-size: 22px;
+    }
+    .auth-card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+    .auth-card input,
+    .auth-card button {
+      width: 100%;
+      min-height: 48px;
+      border-radius: 8px;
+      font-weight: 800;
+    }
+    .auth-card input {
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 12px;
+      outline: none;
+    }
+    .auth-card button {
+      border: 1px solid var(--brand);
+      background: var(--brand);
+      color: #fff;
+    }
+    .auth-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+    .auth-card .secondary-auth {
+      border-color: var(--line);
+      background: #fbfcfe;
+      color: var(--ink);
+    }
+    .auth-error {
+      min-height: 18px;
+      color: #b42318;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .app {
+      height: 100svh;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 12px 12px 24px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .top {
+      z-index: 10;
+      flex: 0 0 auto;
+      margin: -12px -12px 12px;
+      padding: 12px;
+      background: rgba(246, 248, 251, .96);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+    }
+    .brand {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .brand-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex: 1 1 260px;
+      justify-content: flex-end;
+    }
+    .user-badge {
+      min-height: 32px;
+      max-width: 150px;
+      min-width: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 8px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    @media (max-width: 430px) {
+      .brand {
+        align-items: flex-start;
+        gap: 10px;
+      }
+      .brand h1 {
+        flex: 1 1 120px;
+      }
+      .brand-actions {
+        flex: 1 1 210px;
+        gap: 8px;
+      }
+      .month-select {
+        flex: 1 1 auto;
+        max-width: none;
+      }
+      .user-badge {
+        flex: 0 1 auto;
+        max-width: 128px;
+      }
+      .app-title {
+        font-size: 19px;
+      }
+    }
+    h1 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      text-align: center;
+      flex: 1 1 220px;
+      min-width: 0;
+    }
+    .app-title {
+      width: 100%;
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      padding: 0;
+      font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+      font-size: 19px;
+      font-weight: 900;
+      line-height: 1.1;
+      letter-spacing: 0;
+      text-align: left;
+      cursor: pointer;
+    }
+    .auth-card h1 {
+      font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+      font-weight: 900;
+      letter-spacing: 0;
+    }
+    .month { color: var(--muted); font-size: 13px; white-space: nowrap; }
+    .month-select {
+      min-height: 36px;
+      max-width: 190px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 0 8px;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    .search {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .search input, .search button, .day, .shift-tab {
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+    }
+    .search input { width: 100%; padding: 0 12px; outline: none; }
+    .search button { padding: 0 12px; font-weight: 800; }
+    .day-strip {
+      display: grid;
+      grid-auto-flow: column;
+      grid-auto-columns: 48px;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+      scrollbar-width: none;
+    }
+    .day-strip::-webkit-scrollbar { display: none; }
+    .day {
+      height: 52px;
+      display: grid;
+      place-items: center;
+      grid-template-rows: 1fr 1fr;
+      padding: 5px 0;
+      position: relative;
+    }
+    .day strong { font-size: 15px; line-height: 1; }
+    .day span { color: var(--muted); font-size: 11px; }
+    .day.today {
+      border-color: var(--brand);
+      box-shadow: inset 0 0 0 1px var(--brand);
+    }
+    .day.today::after {
+      content: "";
+      position: absolute;
+      right: 6px;
+      top: 6px;
+      width: 7px;
+      height: 7px;
+      border-radius: 999px;
+      background: var(--brand);
+    }
+    .day.active { color: #fff; background: var(--brand); border-color: var(--brand); }
+    .day.active span { color: rgba(255, 255, 255, .82); }
+    .day.active.today::after { background: #fff; }
+    .shift-tabs {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: 7px;
+      flex: 0 0 auto;
+      margin: 12px 0 7px;
+    }
+    .service-tabs {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      margin: 0 0 12px;
+    }
+    .shift-tab {
+      min-width: 0;
+      padding: 8px 4px;
+      display: grid;
+      gap: 2px;
+      place-items: center;
+      font-weight: 900;
+      font-size: 13px;
+    }
+    .shift-tab small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .shift-tab.active {
+      color: #fff;
+      border-color: transparent;
+    }
+    .shift-tab.active small { color: rgba(255, 255, 255, .78); }
+    .shift-tab[data-shift="morning"].active { background: var(--morning); color: #2f2500; }
+    .shift-tab[data-shift="morning"].active small { color: rgba(47, 37, 0, .70); }
+    .shift-tab[data-shift="evening"].active { background: var(--evening); }
+    .shift-tab[data-shift="night"].active { background: var(--night); }
+    .shift-tab[data-shift="icap"].active { background: var(--icap); color: #123744; }
+    .shift-tab[data-shift="icap"].active small { color: rgba(18, 55, 68, .72); }
+    .shift-tab[data-shift="off"].active { background: var(--off); }
+    .shift-tab[data-shift="KEDI_SERVIS"].active { background: #ffe3b3; color: #5f3700; }
+    .shift-tab[data-shift="KEDI_SERVIS"].active small { color: rgba(95, 55, 0, .72); }
+    .shift-tab[data-shift="KOPEK_SERVIS"].active { background: #d9edff; color: #123f62; }
+    .shift-tab[data-shift="KOPEK_SERVIS"].active small { color: rgba(18, 63, 98, .72); }
+    .shift-tab[data-shift="ENFEKSIYON"].active { background: #f8d2dc; color: #6f1f35; }
+    .shift-tab[data-shift="ENFEKSIYON"].active small { color: rgba(111, 31, 53, .72); }
+    .card {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .summary {
+      flex: 0 0 auto;
+      padding: 14px;
+      margin-bottom: 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .kicker {
+      color: var(--brand);
+      font-size: 12px;
+      font-weight: 900;
+      text-transform: uppercase;
+    }
+    .summary h2 {
+      margin: 0;
+      font-size: 23px;
+      line-height: 1.15;
+    }
+    .today-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 22px;
+      margin-left: 7px;
+      padding: 0 7px;
+      border-radius: 999px;
+      background: var(--brand);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 900;
+      vertical-align: middle;
+    }
+    .summary-title-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+    }
+    .day-nav {
+      display: inline-flex;
+      gap: 12px;
+    }
+    .day-nav button {
+      width: 48px;
+      height: 48px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-size: 28px;
+      line-height: 1;
+      font-weight: 900;
+      touch-action: manipulation;
+    }
+    .day-nav button:disabled {
+      opacity: .38;
+    }
+    .summary-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 9px;
+      border-radius: 7px;
+      border: 1px solid var(--line);
+      background: #fbfcfe;
+    }
+    .section-title {
+      margin: 0;
+      padding: 12px 14px 8px;
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 900;
+      background: var(--soft);
+      border-top: 1px solid var(--line);
+    }
+    .section-title:first-child { border-top: 0; }
+    .doctor {
+      min-height: 58px;
+      padding: 10px 14px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+    }
+    .doctor:first-child { border-top: 0; }
+    .doctor-name {
+      border: 0;
+      background: transparent;
+      color: var(--ink);
+      padding: 0;
+      text-align: left;
+      font: inherit;
+      font-weight: 900;
+      cursor: pointer;
+    }
+    .doctor b {
+      display: inline;
+      font-size: 15px;
+      line-height: 1.25;
+    }
+    .list-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      margin-left: 6px;
+      padding: 0 6px;
+      border-radius: 6px;
+      font-size: 10px;
+      font-weight: 900;
+      vertical-align: 1px;
+    }
+    .icap-badge {
+      background: var(--icap);
+      color: #123744;
+    }
+    .cat-badge {
+      background: #ffe3b3;
+      color: #5f3700;
+    }
+    .dog-badge {
+      background: #d9edff;
+      color: #123f62;
+    }
+    .infection-badge {
+      background: #f8d2dc;
+      color: #6f1f35;
+    }
+    .night-badge {
+      background: var(--night);
+      color: #fff;
+    }
+    .doctor small {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .code {
+      min-width: 58px;
+      min-height: 34px;
+      padding: 0 8px;
+      border-radius: 7px;
+      display: inline-grid;
+      place-items: center;
+      color: #fff;
+      font-weight: 900;
+      font-size: 12px;
+      text-align: center;
+    }
+    .code.morning { background: var(--morning); color: #2f2500; }
+    .code.evening { background: var(--evening); }
+    .code.night { background: var(--night); }
+    .code.icap { background: var(--icap); color: #123744; }
+    .code.off { background: var(--off); }
+    .code-button {
+      min-width: 82px;
+      min-height: 36px;
+      border: 0;
+      border-radius: 7px;
+      color: #fff;
+      font-weight: 900;
+      font-size: 12px;
+      text-align: center;
+      padding: 0 10px;
+      touch-action: manipulation;
+      position: relative;
+      z-index: 2;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1;
+    }
+    .code-button.morning { background: var(--morning); color: #2f2500; }
+    .code-button.evening { background: var(--evening); }
+    .code-button.midshift { background: var(--midshift); }
+    .code-button.night { background: var(--night); }
+    .code-button.icap { background: var(--icap); color: #123744; }
+    .code-button.off { background: var(--off); }
+    .code-button.readonly {
+      cursor: default;
+      opacity: .82;
+    }
+    .empty {
+      padding: 28px 18px;
+      color: var(--muted);
+      text-align: center;
+    }
+    #doctorList {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .app.profile-mode .shift-tabs,
+    .app.profile-mode .summary,
+    .app.profile-mode .search,
+    .app.profile-mode .day-strip,
+    .app.profile-mode #doctorList {
+      display: none;
+    }
+    .profile-view {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding: 14px;
+      display: grid;
+      align-content: start;
+      gap: 14px;
+    }
+    .profile-head {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: start;
+      gap: 14px;
+    }
+    .profile-head-main {
+      display: grid;
+      gap: 8px;
+    }
+    .profile-identity {
+      min-width: 0;
+      display: grid;
+      gap: 8px;
+    }
+    .profile-photo {
+      width: 108px;
+      aspect-ratio: 1;
+      border: 2px solid var(--line);
+      border-radius: 18px;
+      background: linear-gradient(135deg, #e7f5f6, #f7fafc);
+      color: var(--brand);
+      display: grid;
+      place-items: center;
+      font-size: 30px;
+      font-weight: 900;
+      box-shadow: inset 0 0 0 6px #fff;
+      flex: 0 0 auto;
+    }
+    .profile-back {
+      justify-self: start;
+      min-height: 38px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 10px;
+      font-weight: 900;
+    }
+    .profile-name {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.15;
+    }
+    @media (max-width: 380px) {
+      .profile-photo {
+        width: 92px;
+        border-radius: 16px;
+        font-size: 26px;
+      }
+      .profile-head-main {
+        gap: 10px;
+      }
+      .profile-head {
+        gap: 10px;
+      }
+    }
+    .profile-meta,
+    .profile-stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .profile-days {
+      display: grid;
+      gap: 8px;
+    }
+    .profile-day {
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-top: 1px solid var(--line);
+    }
+    .profile-day.today {
+      padding: 8px 10px;
+      border: 1px solid var(--brand);
+      border-radius: 8px;
+      background: var(--soft);
+    }
+    .profile-day:first-child { border-top: 0; }
+    .profile-day.today:first-child { border-top: 1px solid var(--brand); }
+    .profile-day strong {
+      display: block;
+      font-size: 14px;
+      line-height: 1.2;
+    }
+    .profile-day small {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      margin-top: 2px;
+    }
+    .profile-day-badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 20px;
+      margin-left: 6px;
+      padding: 0 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 900;
+      vertical-align: middle;
+    }
+    .profile-today-badge {
+      background: var(--brand);
+      color: #fff;
+    }
+    .profile-night-badge {
+      background: var(--night);
+      color: #fff;
+    }
+    .menu-button {
+      min-width: 44px;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1;
+      font-weight: 900;
+    }
+    .drawer-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 40;
+      background: rgba(20, 33, 61, .34);
+    }
+    .drawer {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 50;
+      width: min(360px, 92vw);
+      height: 100svh;
+      background: var(--panel);
+      border-left: 1px solid var(--line);
+      box-shadow: -18px 0 36px rgba(20, 33, 61, .18);
+      transform: translateX(102%);
+      transition: transform .2s ease;
+      display: grid;
+      grid-template-rows: auto 1fr;
+    }
+    .drawer.open {
+      transform: translateX(0);
+    }
+    .code-menu-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      background: rgba(20, 33, 61, .38);
+    }
+    .code-menu {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 70;
+      max-width: 760px;
+      margin: 0 auto;
+      padding: 12px;
+      background: var(--panel);
+      border-radius: 8px 8px 0 0;
+      box-shadow: 0 -18px 36px rgba(20, 33, 61, .18);
+    }
+    .code-menu-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .code-menu-head strong {
+      font-size: 15px;
+      line-height: 1.2;
+    }
+    .code-menu-close {
+      min-width: 42px;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1;
+    }
+    .code-menu-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .code-menu-options.range-mode {
+      grid-template-columns: 1fr;
+    }
+    .code-choice {
+      min-height: 46px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-weight: 900;
+      touch-action: manipulation;
+    }
+    .code-choice.active {
+      border-color: var(--brand);
+      background: var(--soft);
+      color: var(--brand);
+    }
+    .code-range {
+      display: grid;
+      gap: 10px;
+    }
+    .code-range-fields {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .code-range label {
+      display: grid;
+      gap: 5px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .code-range input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 8px;
+      font-weight: 800;
+    }
+    .code-range-apply {
+      min-height: 46px;
+      border: 0;
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 900;
+    }
+    .code-range-error {
+      min-height: 16px;
+      color: #b42318;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .drawer-head {
+      min-height: 58px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-head h2 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+    }
+    .drawer-user-icon {
+      width: 20px;
+      height: 20px;
+      display: inline-grid;
+      place-items: center;
+      border-radius: 999px;
+      background: var(--soft);
+      color: var(--brand);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .drawer-close {
+      min-width: 42px;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      font-size: 22px;
+      line-height: 1;
+    }
+    .import-body {
+      padding: 14px;
+      display: grid;
+      gap: 8px;
+      align-content: start;
+      overflow: auto;
+    }
+    .import-body input,
+    .import-body select,
+    .import-body button,
+    .import-body textarea {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 10px;
+      font-weight: 700;
+    }
+    .import-body textarea {
+      min-height: 108px;
+      padding: 10px;
+      resize: vertical;
+      line-height: 1.35;
+    }
+    .import-body button {
+      background: var(--brand);
+      border-color: var(--brand);
+      color: #fff;
+      font-weight: 900;
+    }
+    .import-status {
+      min-height: 18px;
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .admin-only[hidden] { display: none !important; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body class="locked">
+  <section id="authScreen" class="auth-screen" aria-label="Giriş">
+    <form id="authForm" class="auth-card">
+      <h1>VETAMERİKAN SHIFT ASİSTAN</h1>
+      <p class="login-copy">Uygulamaya giriş yapmak için kullanıcı adı ve şifreyi girin.</p>
+      <p class="register-copy">Yeni kullanıcı oluşturmak için kullanıcı adı ve şifre belirleyin.</p>
+      <input id="authUsername" type="text" placeholder="Kullanıcı adı" autocomplete="username">
+      <input id="authPassword" type="password" placeholder="Şifre" autocomplete="current-password">
+      <div class="auth-actions">
+        <button id="authLoginButton" type="submit">Giriş yap</button>
+        <button id="showRegisterButton" class="secondary-auth" type="button">Kayıt ol</button>
+        <button id="createAccountButton" type="button">Kayıt ol</button>
+        <button id="showLoginButton" class="secondary-auth" type="button">Girişe dön</button>
+      </div>
+      <div id="authError" class="auth-error"></div>
+    </form>
+  </section>
+
+  <main id="app" class="app">
+    <header class="top">
+      <div class="brand">
+        <h1><button id="homeButton" class="app-title" type="button">VETAMERİKAN SHIFT ASİSTAN</button></h1>
+        <div class="brand-actions">
+          <select id="monthSelect" class="month-select" aria-label="Ay seç"></select>
+          <span id="userBadge" class="user-badge"></span>
+          <button id="menuButton" class="menu-button" type="button" aria-label="Menü">☰</button>
+        </div>
+      </div>
+      <div class="search">
+        <input id="searchInput" type="search" placeholder="Hekim ara" autocomplete="off">
+        <button id="todayButton" type="button">Bugün</button>
+      </div>
+      <div id="dayStrip" class="day-strip" aria-label="Gün seç"></div>
+    </header>
+
+    <div id="shiftTabs" class="shift-tabs" aria-label="Vardiya seç">
+      <button class="shift-tab active" data-shift="morning" type="button">Sabah<small id="morningTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="evening" type="button">Akşam<small id="eveningTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="night" type="button">Gece<small id="nightTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="icap" type="button">İcap<small id="icapTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="off" type="button">İzinli<small id="offTabCount">0 kişi</small></button>
+    </div>
+    <div id="serviceTabs" class="shift-tabs service-tabs" aria-label="Servis seç">
+      <button class="shift-tab" data-shift="KEDI_SERVIS" type="button">Kedi servis<small id="catServiceTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="KOPEK_SERVIS" type="button">Köpek servis<small id="dogServiceTabCount">0 kişi</small></button>
+      <button class="shift-tab" data-shift="ENFEKSIYON" type="button">Enfeksiyon<small id="infectionTabCount">0 kişi</small></button>
+    </div>
+
+    <section id="summaryCard" class="summary card">
+      <div class="kicker" id="activeShiftLabel"></div>
+      <div class="summary-title-row">
+        <h2 id="dateTitle"></h2>
+        <div class="day-nav" aria-label="Gün değiştir">
+          <button id="prevDayButton" type="button" aria-label="Önceki gün">‹</button>
+          <button id="nextDayButton" type="button" aria-label="Sonraki gün">›</button>
+        </div>
+      </div>
+      <div class="summary-row">
+        <span class="tag" id="countLabel"></span>
+        <span class="tag" id="ruleLabel"></span>
+      </div>
+    </section>
+
+    <section id="doctorList" class="card"></section>
+    <section id="profileView" class="profile-view card" hidden></section>
+  </main>
+
+  <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
+  <aside id="drawer" class="drawer" aria-label="Menü" aria-hidden="true">
+    <div class="drawer-head">
+      <h2><span class="drawer-user-icon" aria-hidden="true">👤</span><span id="drawerUserTitle">Kullanıcı</span></h2>
+      <button id="drawerClose" class="drawer-close" type="button" aria-label="Kapat">×</button>
+    </div>
+    <div class="import-body">
+      <div id="adminDatabaseTools" class="admin-only">
+        <input id="importMonth" type="month" value="2026-07">
+        <input id="importFile" type="file" accept=".csv,.txt,text/*,text/csv,application/csv,application/vnd.ms-excel,application/octet-stream">
+        <button id="importButton" type="button">CSV yükle ve aç</button>
+        <textarea id="importText" placeholder="CSV içeriğini buraya yapıştır"></textarea>
+        <button id="importTextButton" type="button">Yapıştırılan CSV'yi aç</button>
+        <select id="datasetSelect" aria-label="Ay seç"></select>
+        <button id="resetOverridesButton" type="button">Manuel değişiklikleri sıfırla</button>
+        <div id="importStatus" class="import-status"></div>
+      </div>
+      <div id="appVersionLabel" class="import-status"></div>
+      <button id="logoutButton" type="button">Çıkış yap</button>
+    </div>
+  </aside>
+
+  <div id="codeMenuBackdrop" class="code-menu-backdrop" hidden></div>
+  <div id="codeMenu" class="code-menu" role="dialog" aria-modal="true" aria-hidden="true" hidden>
+    <div class="code-menu-head">
+      <strong id="codeMenuTitle">Vardiya seç</strong>
+      <button id="codeMenuClose" class="code-menu-close" type="button" aria-label="Kapat">×</button>
+    </div>
+    <div id="codeMenuOptions" class="code-menu-options"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    const appUsername = "admin";
+    const appPassword = "admin";
+    const defaultUsers = {
+      hasansar: "123456"
+    };
+    const authStorageKey = "vetamerikan-shift-authenticated";
+    const authUserStorageKey = "vetamerikan-shift-auth-user";
+    const authUsersStorageKey = "vetamerikan-shift-users";
+    const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
+    const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
+    const supabaseTable = "shift_overrides";
+    const appVersion = "2026.06.20.4";
+    const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+    const shiftInfo = {
+      morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
+      evening: { label: "Akşam", rule: "A veya akşam saatleri", className: "evening" },
+      night: { label: "Gece", rule: "20-08", className: "night" },
+      icap: { label: "İcap", rule: "İ, I veya İCAP", className: "icap" },
+      off: { label: "İzinli", rule: "Boş hücre", className: "off" },
+      KEDI_SERVIS: { label: "Kedi servis", rule: "Kedi servis rozeti", className: "morning" },
+      KOPEK_SERVIS: { label: "Köpek servis", rule: "Köpek servis rozeti", className: "morning" },
+      ENFEKSIYON: { label: "Enfeksiyon birimi", rule: "Enfeksiyon rozeti", className: "morning" }
+    };
+
+    function buildDays(year, monthIndex, count) {
+      return Array.from({ length: count }, (_, i) => {
+        const date = new Date(year, monthIndex, i + 1);
+        return {
+          day: i + 1,
+          short: ["paz", "pzt", "sal", "çar", "per", "cum", "cmt"][date.getDay()],
+          long: date.toLocaleDateString("tr-TR", { weekday: "long", day: "numeric", month: "long" })
+        };
+      });
+    }
+
+    const days = buildDays(2026, 5, 30);
+
+    function dayForDataset(dataset) {
+      const now = new Date();
+      if (now.getFullYear() === dataset.year && now.getMonth() === dataset.monthIndex) return now.getDate();
+      return 1;
+    }
+
+    function todayForDataset(dataset) {
+      const now = new Date();
+      if (now.getFullYear() === dataset.year && now.getMonth() === dataset.monthIndex) return now.getDate();
+      return null;
+    }
+
+    const rows = [
+      ["Cerrahi","Emine Esma Çerez","60371",["8-17","8-17","","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17"]],
+      ["Cerrahi","Nihan Dikbaş Tsatsaronis","60313",["S","S","S","S","S","","A","A","A","A","A","A","","S","A","A","A","A","A","","S","S","S","S","S","S","","S","S","S"]],
+      ["Cerrahi","Burak Gümürcünler","60455",["A","A","A","A","A","A","","S","S","S","S","S","A","","S","S","S","S","S","A","","A","A","A","A","A","A","","A","A"]],
+      ["Cerrahi","Yağmur Koçak","60502",["S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S"]],
+      ["Dahiliye","Öykü Sargın","60374",["","","","","","","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S",""]],
+      ["Dahiliye","Emre Külük","60399",["S","S","S","S","S","S","","12-22","","","","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20"]],
+      ["Dahiliye","Efrahim Sargın","60373",["","","","","","","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","DG","S","S","S","","S","S"]],
+      ["Prof. Asistanı","Özgecan Küleyinoğlu","60314",["S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S"]],
+      ["Prof. Asistanı","Sevde İslamoğlu","60380",["S","S","S","S","S","","S","S","S","S","S","","","","","S","S","S","S","","A","S","S","S","S","S","","A","S","S"]],
+      ["Genel Muayene","Semih İzmirli","60375",["S","S","S","","S","S","S","S","S","S","","S","S","A","S","20-08","","","","","","","","","S","S","S","S","S","S"]],
+      ["Genel Muayene","Hasan Sargın","60420",["A","A","A","A","A","","A","A","A","A","A","A","","A","A","A","A","A","A","","A","A","A","A","A","A","","A","A","A"]],
+      ["Genel Muayene","Yusuf Sefa Dedeoğlu","60508",["8-17.30","8-17.30","8-17.30","8-17.30","","8-18","8-17.30","8-17.30","8-17.30","","","","8-18","8-17.30","8-17.30","8-17.30","8-17.30","","","8-18","8-17.30","8-17.30","8-17.30","8-17.30","","","8-18","8-17.30","8-17.30","8-17.30"]],
+      ["Genel Muayene","Emre Koçak","60415",["S","S","S","S","S","S","","S","S","S","S","S","A","","S","S","S","S","S","A","","S","S","S","S","S","S","","",""]],
+      ["Genel Muayene","Erhan Gülçiçek","60483",["","","","","","","","","","","","","","","","","","","","","","S","S","S","S","S","","A","A","A"]],
+      ["Genel Muayene","Tolga Baturalp Tavşanlı","60536",["S","S","S","S","S","A","","S","S","S","S","S","S","","S","S","S","S","S","A","","08-20","S","20-08","","S","A","","S","S"]],
+      ["Genel Muayene","Mehmet Yıldız","60400",["08-20","08-20","20-08","","","08-20","","08-20","08-20","20-08","","","08-20","","08-20","","","08-20","08-20","20-08","","08-20","20-08","","","08-20","08-20","","08-20","08-20"]],
+      ["Genel Muayene","Yağmur Kaplan","60382",["12-20","08-20","08-20","20-08","","","20-08","","","","20-08","","","20-08","","08-20","08-20","20-08","","","20-08","","08-20","08-20","20-08","","","20-08","","20-08"]],
+      ["Genel Muayene","Meryemnur Tecimer","60416",["20-08","","","08-20","20-08","","08-20","20-08","","","","20-08","","08-20","20-08","","","08-20","20-08","","08-20","20-08","","","08-20","20-08","","08-20","",""]],
+      ["Genel Muayene","Aysu Altın","60391",["","","20-08","","08-20","20-08","","","20-08","","08-20","08-20","20-08","","","08-20","20-08","","08-20","20-08","","S","S","S","S","S","S","","08-20","08-20"]],
+      ["Genel Muayene","Sıla Çınar İzmirli","60430",["","20-08","","","08-20","20-08","","08-20","20-08","","","08-20","20-08","","08-20","20-08","","","","","","","","","","8-20","20-8","","S","S"]],
+      ["Genel Muayene","Rüzgar Aktaş","60435",["","","","20-08","","08-20","20-08","","","08-20","20-08","","08-20","20-08","","","08-20","20-08","","08-20","20-08","","","08-20","20-08","20-08","","08-20","08-20","20-08"]],
+      ["Genel Muayene","Görkem Koçak","60488",["20-08","","20-08","","20-08","","08-20","20-08","","20-08","","20-08","","08-20","20-08","","20-08","","20-08","","08-20","20-08","","20-08","","20-08","","20-08","",""]],
+      ["Genel Muayene","Begüm Öztürk","60538",["","","","8-20","S","S","","8-17","8-20","8-20","","S","S","","S","S","20-08","","S","8-20","","","20-08","","08-20","08-20","20-08","","08-20",""]],
+      ["Genel Muayene","Melisanur Ural","60448",["S","S","S","S","S","S","","S","S","S","S","S","S","","","S","S","S","S","S","","S","S","S","S","S","S","","S","S"]],
+      ["Genel Muayene","Gamze Kartal Mehmedov","60481",["9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","9-17","",""]],
+      ["Genel Muayene","Mehmet Kızıloğlu","60501",["S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","",""]]
+    ];
+
+    const overrideStorageKey = "vetamerikan-shift-inline-overrides-june-2026";
+    const julyRows = [["Cerrahi","Emine Esma Çerez","60371",["S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17"]],["Cerrahi","Nihan Dikbaş Tsatsaronis","60313",["S","S","S","","A","A","A","A","A","A","","A","A","A","A","A","A","","S","S","S","S","S","S","","S","S","S","S","S","S"]],["Cerrahi","Burak Gümürcünler","60455",["A","A","A","A","","S","S","S","S","S","A","","S","S","S","S","S","A","","A","A","A","A","A","A","","A","A","A","A","A"]],["Cerrahi","Yağmur Koçak","60502",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Dahiliye","Öykü Sargın","60374",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Dahiliye","Emre Külük","60399",["12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22"]],["Dahiliye","Efrahim Sargın","60373",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Prof. Asistanı","Özgecan Küleyinoğlu","60314",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Prof. Asistanı","Sevde İslamoğlu","60380",["S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","A","S","S","S","S","S","","A","S","S","S","S","S"]],["Genel Muayene","Semih İzmirli","60375",["S","S","S","S","S","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Hasan Sargın","60420",["A","A","A","","A","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Yusuf Sefa Dedeoğlu","60508",["8-17.30","","","8-18","8-17.30","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Emre Koçak","60415",["S","S","S","A","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Tolga Baturalp Tavşanlı","60536",["S","S","S","S","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Mehmet Yıldız","60400",["20-08","","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Yağmur Kaplan","60382",["","","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Meryemnur Tecimer","60416",["","08-20","20-08","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Aysu Altın","60391",["08-20","20-08","","","20-08","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Sıla Çınar İzmirli","60430",["S","20-08","","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Rüzgar Aktaş","60435",["","08-20","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Görkem Koçak","60488",["20-08","","20-08","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Begüm Öztürk","60538",["08-20","20-08","","S","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Melisanur Ural","60448",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Genel Muayene","Gamze Kartal Mehmedov","60481",["","","","","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17"]],["Genel Muayene","Mehmet Kızıloğlu","60501",["","","","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Genel Muayene","Erhan Gülçiçek","60483",["","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]]];
+    let overrides = {};
+    try {
+      overrides = JSON.parse(localStorage.getItem(overrideStorageKey) || "{}");
+    } catch {
+      overrides = {};
+    }
+
+    const datasetStorageKey = "vetamerikan-shift-csv-datasets";
+    const removedJulyDatasetKey = "vetamerikan-shift-removed-temmuz-2026";
+    let customDatasets = [];
+    try {
+      customDatasets = JSON.parse(localStorage.getItem(datasetStorageKey) || "[]");
+    } catch {
+      customDatasets = [];
+    }
+    if (!localStorage.getItem(removedJulyDatasetKey)) {
+      const filteredDatasets = customDatasets.filter(dataset => dataset.label !== "Temmuz 2026");
+      if (filteredDatasets.length !== customDatasets.length) {
+        customDatasets = filteredDatasets;
+        localStorage.setItem(datasetStorageKey, JSON.stringify(customDatasets));
+      }
+      localStorage.setItem(removedJulyDatasetKey, "1");
+    }
+
+    const builtInDataset = {
+      id: "haziran-2026",
+      label: "Haziran 2026",
+      year: 2026,
+      monthIndex: 5,
+      rows
+    };
+    const julyDataset = {
+      id: "temmuz-2026",
+      label: "Temmuz 2026",
+      year: 2026,
+      monthIndex: 6,
+      rows: julyRows
+    };
+    let activeDataset = builtInDataset;
+    let activeDays = days;
+
+    const codeOptions = [
+      { value: "", label: "İzin" },
+      { value: "S", label: "08-16" },
+      { value: "A", label: "14-22" },
+      { value: "İ", label: "İcap" },
+      { value: "08-20", label: "08-20" },
+      { value: "20-08", label: "20-08" },
+      { value: "8-17", label: "8-17" },
+      { value: "8-17.30", label: "8-17.30" },
+      { value: "9-17", label: "9-17" },
+      { value: "10-16", label: "10-16" },
+      { value: "10-20", label: "10-20" },
+      { value: "12-20", label: "12-20" },
+      { value: "12-22", label: "12-22" },
+      { value: "KEDI_SERVIS", label: "Kedi servis" },
+      { value: "KOPEK_SERVIS", label: "Köpek servis" },
+      { value: "ENFEKSIYON", label: "Enfeksiyon birimi" }
+    ];
+    const addonOptions = {
+      KEDI_SERVIS: { storage: "Kedi Servis", label: "Kedi", className: "cat-badge" },
+      KOPEK_SERVIS: { storage: "Köpek Servis", label: "Köpek", className: "dog-badge" },
+      ENFEKSIYON: { storage: "Enfeksiyon Birimi", label: "Enfeksiyon", className: "infection-badge" }
+    };
+
+    const shiftOrder = ["morning", "evening", "night", "icap", "off", "KEDI_SERVIS", "KOPEK_SERVIS", "ENFEKSIYON"];
+    const sectionOverrides = {
+      "melisanur ural": "Fizik Tedavi",
+      "mehmet kızıloglu": "Mobil Hizmet Birimi",
+      "mehmet kızılkuyu": "Mobil Hizmet Birimi",
+      "gamze kartal mehmedov": "Radyoloji",
+      "gamze kartal mehmetov": "Radyoloji"
+    };
+    const nameOverrides = {
+      "emine esma cerez": "Dr. Emine Esma Çerkez",
+      "burak gumurcunler": "Dr. Burak Gümürçinler",
+      "yagmur kocak": "Dr. Yağmur Koçak",
+      "oyku sargın": "Dr. Öykü Sargın",
+      "nihan dikbas tsatsaronis": "Dr. Nihan Dikbaş Tsatsaronis",
+      "sevde islamoglu": "Dr. Sevde İslamoğlu",
+      "emre kuluk": "Dr. Emre Küllük",
+      "ozgecan kuleyinoglu": "Özgecan Kuleyinoğlu",
+      "mehmet kızıloglu": "Mehmet Kızılkuyu",
+      "aysu altın": "Aysu Altun"
+    };
+    const specialtyOverrides = {
+      "emine esma cerez": "Onkoloji",
+      "burak gumurcunler": "Ortopedi",
+      "yagmur kocak": "Nöroşirurji",
+      "oyku sargın": "Dahiliye",
+      "efrahim sargın": "Kardiyoloji",
+      "ozgecan kuleyinoglu": "Göz & KBB",
+      "sevde islamoglu": "Ortopedi",
+      "nihan dikbas tsatsaronis": "Cerrahi",
+      "emre kuluk": "Dahiliye",
+      "melisanur ural": "Fizik Tedavi ve Rehabilitasyon",
+      "gamze kartal mehmedov": "Radyoloji",
+      "gamze kartal mehmetov": "Radyoloji",
+      "mehmet kızıloglu": "Mobil Hizmet",
+      "mehmet kızılkuyu": "Mobil Hizmet"
+    };
+    const state = { day: dayForDataset(builtInDataset), shift: "morning", query: "" };
+    let profileEditContext = null;
+    let activeProfileSicil = null;
+    let supabaseRealtimeChannel = null;
+    let supabasePollTimer = null;
+    let lastRemoteFingerprint = "";
+    const pendingOverrideKeys = new Set();
+    const els = {
+      app: document.getElementById("app"),
+      authForm: document.getElementById("authForm"),
+      authScreen: document.getElementById("authScreen"),
+      authUsername: document.getElementById("authUsername"),
+      authPassword: document.getElementById("authPassword"),
+      authError: document.getElementById("authError"),
+      showRegisterButton: document.getElementById("showRegisterButton"),
+      createAccountButton: document.getElementById("createAccountButton"),
+      showLoginButton: document.getElementById("showLoginButton"),
+      homeButton: document.getElementById("homeButton"),
+      userBadge: document.getElementById("userBadge"),
+      search: document.getElementById("searchInput"),
+      today: document.getElementById("todayButton"),
+      dayStrip: document.getElementById("dayStrip"),
+      tabs: Array.from(document.querySelectorAll(".shift-tab")),
+      morningTabCount: document.getElementById("morningTabCount"),
+      eveningTabCount: document.getElementById("eveningTabCount"),
+      nightTabCount: document.getElementById("nightTabCount"),
+      icapTabCount: document.getElementById("icapTabCount"),
+      offTabCount: document.getElementById("offTabCount"),
+      catServiceTabCount: document.getElementById("catServiceTabCount"),
+      dogServiceTabCount: document.getElementById("dogServiceTabCount"),
+      infectionTabCount: document.getElementById("infectionTabCount"),
+      dateTitle: document.getElementById("dateTitle"),
+      prevDay: document.getElementById("prevDayButton"),
+      nextDay: document.getElementById("nextDayButton"),
+      activeShiftLabel: document.getElementById("activeShiftLabel"),
+      countLabel: document.getElementById("countLabel"),
+      ruleLabel: document.getElementById("ruleLabel"),
+      doctorList: document.getElementById("doctorList"),
+      profileView: document.getElementById("profileView"),
+      monthSelect: document.getElementById("monthSelect"),
+      importMonth: document.getElementById("importMonth"),
+      importFile: document.getElementById("importFile"),
+      importButton: document.getElementById("importButton"),
+      importText: document.getElementById("importText"),
+      importTextButton: document.getElementById("importTextButton"),
+      resetOverridesButton: document.getElementById("resetOverridesButton"),
+      adminDatabaseTools: document.getElementById("adminDatabaseTools"),
+      appVersionLabel: document.getElementById("appVersionLabel"),
+      logoutButton: document.getElementById("logoutButton"),
+      datasetSelect: document.getElementById("datasetSelect"),
+      importStatus: document.getElementById("importStatus"),
+      menuButton: document.getElementById("menuButton"),
+      drawer: document.getElementById("drawer"),
+      drawerUserTitle: document.getElementById("drawerUserTitle"),
+      drawerClose: document.getElementById("drawerClose"),
+      drawerBackdrop: document.getElementById("drawerBackdrop"),
+      codeMenu: document.getElementById("codeMenu"),
+      codeMenuBackdrop: document.getElementById("codeMenuBackdrop"),
+      codeMenuTitle: document.getElementById("codeMenuTitle"),
+      codeMenuOptions: document.getElementById("codeMenuOptions"),
+      codeMenuClose: document.getElementById("codeMenuClose")
+    };
+
+    function norm(text) {
+      return text.toLocaleLowerCase("tr-TR").normalize("NFD").replace(/\p{Diacritic}/gu, "");
+    }
+
+    function savedUsers() {
+      try {
+        return JSON.parse(localStorage.getItem(authUsersStorageKey) || "{}");
+      } catch {
+        return {};
+      }
+    }
+
+    function saveUsers(users) {
+      localStorage.setItem(authUsersStorageKey, JSON.stringify(users));
+    }
+
+    function isValidLogin(username, password) {
+      if (username === appUsername && password === appPassword) return true;
+      if (defaultUsers[username] === password) return true;
+      return savedUsers()[username] === password;
+    }
+
+    function saveAuth(username) {
+      localStorage.setItem(authStorageKey, "1");
+      localStorage.setItem(authUserStorageKey, username);
+      sessionStorage.removeItem(authStorageKey);
+      sessionStorage.removeItem(authUserStorageKey);
+    }
+
+    function clearAuth() {
+      localStorage.removeItem(authStorageKey);
+      localStorage.removeItem(authUserStorageKey);
+      sessionStorage.removeItem(authStorageKey);
+      sessionStorage.removeItem(authUserStorageKey);
+    }
+
+    function currentUsername() {
+      return localStorage.getItem(authUserStorageKey) || "";
+    }
+
+    function isAdminUser() {
+      return currentUsername() === appUsername;
+    }
+
+    function updateUserBadge() {
+      els.userBadge.textContent = currentUsername() || "";
+      els.drawerUserTitle.textContent = currentUsername() || "Kullanıcı";
+    }
+
+    function updateAdminVisibility() {
+      els.adminDatabaseTools.hidden = !isAdminUser();
+    }
+
+    function registerUser() {
+      const username = els.authUsername.value.trim().toLocaleLowerCase("tr-TR");
+      const password = els.authPassword.value;
+      if (username.length < 3 || password.length < 3) {
+        els.authError.textContent = "Kullanıcı adı ve şifre en az 3 karakter olmalı.";
+        return;
+      }
+      const users = savedUsers();
+      users[username] = password;
+      saveUsers(users);
+      saveAuth(username);
+      unlockApp();
+    }
+
+    function showRegisterScreen() {
+      els.authScreen.classList.add("register-mode");
+      els.authError.textContent = "";
+      els.authPassword.value = "";
+      requestAnimationFrame(() => els.authUsername.focus());
+    }
+
+    function showLoginScreen() {
+      els.authScreen.classList.remove("register-mode");
+      els.authError.textContent = "";
+      els.authPassword.value = "";
+      requestAnimationFrame(() => els.authUsername.focus());
+    }
+
+    function unlockApp() {
+      document.body.classList.remove("locked");
+      updateUserBadge();
+      updateAdminVisibility();
+      els.authUsername.value = "";
+      els.authPassword.value = "";
+      els.authError.textContent = "";
+      renderList();
+    }
+
+    function lockApp() {
+      closeDrawer();
+      closeCodeMenu();
+      clearAuth();
+      updateUserBadge();
+      updateAdminVisibility();
+      document.body.classList.add("locked");
+      requestAnimationFrame(() => els.authUsername.focus());
+    }
+
+    function initAuth() {
+      const legacyUser = sessionStorage.getItem(authUserStorageKey);
+      if (legacyUser && sessionStorage.getItem(authStorageKey) === "1") saveAuth(legacyUser);
+      if (localStorage.getItem(authStorageKey) === "1" && currentUsername()) {
+        unlockApp();
+        return;
+      }
+      document.body.classList.add("locked");
+      requestAnimationFrame(() => els.authUsername.focus());
+    }
+
+    function sectionFor(section, name) {
+      return sectionOverrides[norm(name)] || section;
+    }
+
+    function nameFor(name) {
+      const displayName = nameOverrides[norm(name)] || name;
+      if (/^(dr\.|vet\. hekim)/i.test(displayName.trim())) return displayName;
+      return `Vet. Hekim ${displayName}`;
+    }
+
+    function specialtyFor(name) {
+      return specialtyOverrides[norm(name)] || "Genel Muayene";
+    }
+
+    function initialsForName(name) {
+      const cleanName = name
+        .replace(/^(dr\.|vet\. hekim)\s+/i, "")
+        .trim();
+      return cleanName
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0]?.toLocaleUpperCase("tr-TR") || "")
+        .join("");
+    }
+
+    function addonKeyForPart(part) {
+      const value = norm(part).replace(/\s+/g, " ").trim();
+      if (value === "i" || value === "icap") return "ICAP";
+      if (value === "kedi servis") return "KEDI_SERVIS";
+      if (value === "kopek servis") return "KOPEK_SERVIS";
+      if (value === "enfeksiyon" || value === "enfeksiyon birimi") return "ENFEKSIYON";
+      return "";
+    }
+
+    function parseRaw(raw) {
+      const parts = String(raw || "").split("+").map(part => part.trim()).filter(Boolean);
+      const addons = [];
+      let base = "";
+      parts.forEach(part => {
+        const addonKey = addonKeyForPart(part);
+        if (addonKey) {
+          if (!addons.includes(addonKey)) addons.push(addonKey);
+        } else if (!base) {
+          base = part;
+        }
+      });
+      return { base, addons };
+    }
+
+    function rawFromParts(base, addons) {
+      const cleanedAddons = [...new Set(addons)];
+      if (!base && cleanedAddons.length === 1 && cleanedAddons[0] === "ICAP") return "İ";
+      const labels = cleanedAddons.map(key => key === "ICAP" ? "İcap" : addonOptions[key]?.storage).filter(Boolean);
+      return [base, ...labels].filter(Boolean).join(" + ");
+    }
+
+    function hasAddon(raw, addonKey) {
+      return parseRaw(raw).addons.includes(addonKey);
+    }
+
+    function withAddon(raw, addonKey) {
+      const parsed = parseRaw(raw);
+      if (!parsed.addons.includes(addonKey)) parsed.addons.push(addonKey);
+      return rawFromParts(parsed.base, parsed.addons);
+    }
+
+    function withoutAddon(raw, addonKey) {
+      const parsed = parseRaw(raw);
+      return rawFromParts(parsed.base, parsed.addons.filter(key => key !== addonKey));
+    }
+
+    function hasIcap(raw) {
+      return hasAddon(raw, "ICAP");
+    }
+
+    function baseRaw(raw) {
+      return parseRaw(raw).base;
+    }
+
+    function withIcap(raw) {
+      return withAddon(raw, "ICAP");
+    }
+
+    function withoutIcap(raw) {
+      return withoutAddon(raw, "ICAP");
+    }
+
+    function isNightRaw(raw) {
+      const value = baseRaw(raw).toUpperCase().replace(/\s/g, "");
+      return /^20[-:.]?0?8$/.test(value) || value.includes("20-08") || value.includes("20-8");
+    }
+
+    function classify(raw) {
+      const base = baseRaw(raw);
+      const value = base.toUpperCase();
+      if (!value) return "off";
+      if (value === "S") return "morning";
+      if (value === "A") return "evening";
+      if (isNightRaw(raw)) return "night";
+      if (/^(8|08|9|09)-/.test(value)) return "morning";
+      if (value === "10-16") return "morning";
+      if (/^(10|12|14|16)-/.test(value)) return "evening";
+      return "morning";
+    }
+
+    function rowKey(sicil, day) {
+      return `${activeDataset.id}-${sicil}-${day}`;
+    }
+
+    function overrideKey(monthKey, doctorId, day) {
+      return `${monthKey}-${doctorId}-${day}`;
+    }
+
+    function overrideRecordFromKey(key) {
+      const dataset = allDatasets()
+        .sort((a, b) => b.id.length - a.id.length)
+        .find(item => key.startsWith(`${item.id}-`));
+      if (!dataset) return null;
+      const rest = key.slice(dataset.id.length + 1);
+      const lastDash = rest.lastIndexOf("-");
+      if (lastDash < 1) return null;
+      const doctorId = rest.slice(0, lastDash);
+      const day = Number(rest.slice(lastDash + 1));
+      if (!doctorId || !Number.isInteger(day)) return null;
+      return { month_key: dataset.id, doctor_id: doctorId, day };
+    }
+
+    function rawForRowDay(sicil, schedule, day) {
+      const key = rowKey(sicil, day);
+      if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
+      return schedule[day - 1] || "";
+    }
+
+    function rawForRow(sicil, schedule) {
+      return rawForRowDay(sicil, schedule, state.day);
+    }
+
+    function saveOverrides() {
+      localStorage.setItem(overrideStorageKey, JSON.stringify(overrides));
+    }
+
+    function setSupabaseStatus(message) {
+      if (els.importStatus) els.importStatus.textContent = message;
+    }
+
+    async function supabaseRequest(path, options = {}) {
+      const method = String(options.method || "GET").toUpperCase();
+      const cacheBuster = method === "GET" ? `${path.includes("?") ? "&" : "?"}_cb=${Date.now()}` : "";
+      const response = await fetch(`${supabaseUrl}/rest/v1/${path}${cacheBuster}`, {
+        ...options,
+        cache: "no-store",
+        headers: {
+          apikey: supabaseKey,
+          Authorization: `Bearer ${supabaseKey}`,
+          "Cache-Control": "no-store",
+          Pragma: "no-cache",
+          "Content-Type": "application/json",
+          ...(options.headers || {})
+        }
+      });
+      if (!response.ok) {
+        const message = await response.text().catch(() => "");
+        throw new Error(message || `Supabase hata kodu: ${response.status}`);
+      }
+      if (response.status === 204) return null;
+      return response.json().catch(() => null);
+    }
+
+    function refreshAfterRemoteChange() {
+      const profileSicil = activeProfileSicil;
+      render();
+      if (profileSicil) openProfile(profileSicil);
+    }
+
+    async function loadSupabaseOverrides({ replace = false, syncLocal = true, silent = false } = {}) {
+      try {
+        const records = await supabaseRequest(`${supabaseTable}?select=month_key,doctor_id,day,value,updated_at&order=updated_at.asc`);
+        if (!Array.isArray(records)) return;
+        const fingerprint = JSON.stringify(records.map(record => [
+          record.month_key,
+          record.doctor_id,
+          record.day,
+          record.value || "",
+          record.updated_at || ""
+        ]));
+        const unchanged = fingerprint === lastRemoteFingerprint && !pendingOverrideKeys.size;
+        lastRemoteFingerprint = fingerprint;
+        if (unchanged && silent) return;
+        const remoteOverrides = {};
+        records.forEach(record => {
+          remoteOverrides[overrideKey(record.month_key, record.doctor_id, record.day)] = record.value || "";
+        });
+        pendingOverrideKeys.forEach(key => {
+          if (Object.prototype.hasOwnProperty.call(overrides, key)) remoteOverrides[key] = overrides[key];
+        });
+        const localOnly = syncLocal
+          ? Object.entries(overrides).filter(([key]) => !Object.prototype.hasOwnProperty.call(remoteOverrides, key))
+          : [];
+        overrides = replace ? remoteOverrides : { ...overrides, ...remoteOverrides };
+        saveOverrides();
+        refreshAfterRemoteChange();
+        if (syncLocal) localOnly.forEach(([key, value]) => syncOverrideToSupabase(key, value, false));
+        if (!silent) setSupabaseStatus("Supabase bağlantısı aktif.");
+      } catch (error) {
+        if (!silent) setSupabaseStatus(`Supabase okuma hatası: ${error.message}`);
+      }
+    }
+
+    async function syncOverrideToSupabase(key, value, remove = false) {
+      const record = overrideRecordFromKey(key);
+      if (!record) return;
+      pendingOverrideKeys.add(key);
+      try {
+        if (remove) {
+          const query = `month_key=eq.${encodeURIComponent(record.month_key)}&doctor_id=eq.${encodeURIComponent(record.doctor_id)}&day=eq.${record.day}`;
+          await supabaseRequest(`${supabaseTable}?${query}`, { method: "DELETE" });
+          setSupabaseStatus("Supabase değişiklik kaydedildi.");
+          return;
+        }
+        await supabaseRequest(`${supabaseTable}?on_conflict=month_key,doctor_id,day`, {
+          method: "POST",
+          headers: { Prefer: "resolution=merge-duplicates,return=representation" },
+          body: JSON.stringify({ ...record, value })
+        });
+        setSupabaseStatus("Supabase değişiklik kaydedildi.");
+      } catch (error) {
+        setSupabaseStatus(`Supabase yazma hatası: ${error.message}`);
+      } finally {
+        pendingOverrideKeys.delete(key);
+      }
+    }
+
+    function handleSupabaseRealtime(payload) {
+      setSupabaseStatus("Realtime değişiklik alındı.");
+      if (payload.eventType === "DELETE") {
+        loadSupabaseOverrides({ replace: true, syncLocal: false });
+        return;
+      }
+      const record = payload.new;
+      if (!record?.month_key || !record?.doctor_id || !record?.day) return;
+      const key = overrideKey(record.month_key, record.doctor_id, record.day);
+      if (pendingOverrideKeys.has(key)) return;
+      overrides[key] = record.value || "";
+      saveOverrides();
+      refreshAfterRemoteChange();
+    }
+
+    function startSupabaseRealtime() {
+      if (!supabaseClient) {
+        if (els.importStatus) els.importStatus.textContent = "Realtime istemcisi yüklenemedi.";
+        return;
+      }
+      supabaseRealtimeChannel = supabaseClient
+        .channel("shift-overrides-realtime")
+        .on("postgres_changes", {
+          event: "*",
+          schema: "public",
+          table: supabaseTable
+        }, handleSupabaseRealtime)
+        .subscribe(status => {
+        if (status === "SUBSCRIBED") setSupabaseStatus("Supabase realtime aktif.");
+        if (status === "CHANNEL_ERROR") setSupabaseStatus("Supabase realtime bağlantısı kurulamadı.");
+      });
+    }
+
+    function startSupabasePollingFallback() {
+      if (supabasePollTimer) window.clearTimeout(supabasePollTimer);
+      const poll = async () => {
+        await loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
+        supabasePollTimer = window.setTimeout(poll, document.hidden ? 5000 : 1500);
+      };
+      supabasePollTimer = window.setTimeout(poll, 1500);
+    }
+
+    function syncWhenAppBecomesActive() {
+      loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
+    }
+
+    function forceSupabaseRefresh() {
+      loadSupabaseOverrides({ replace: true, syncLocal: false, silent: false });
+    }
+
+    function renderAppVersion() {
+      els.appVersionLabel.textContent = `Sürüm ${appVersion}`;
+    }
+
+    async function resetSupabaseOverrides() {
+      try {
+        await supabaseRequest(`${supabaseTable}?id=not.is.null`, { method: "DELETE" });
+      } catch (error) {
+        if (els.importStatus) els.importStatus.textContent = "Yerel kayıtlar silindi, Supabase sıfırlanamadı.";
+      }
+    }
+
+    function resetManualOverrides() {
+      const confirmed = window.confirm("Tüm manuel şift/icap/servis değişiklikleri silinsin mi?");
+      if (!confirmed) return;
+      overrides = {};
+      localStorage.removeItem(overrideStorageKey);
+      resetSupabaseOverrides();
+      profileEditContext = null;
+      closeCodeMenu();
+      closeProfile();
+      render();
+      els.importStatus.textContent = "Manuel değişiklikler sıfırlandı.";
+    }
+
+    function saveOverrideValue(key, value, remove = false) {
+      if (remove) {
+        delete overrides[key];
+      } else {
+        overrides[key] = value;
+      }
+      saveOverrides();
+      syncOverrideToSupabase(key, value, false);
+    }
+
+    function daysInMonth(year, monthIndex) {
+      return new Date(year, monthIndex + 1, 0).getDate();
+    }
+
+    function labelForMonth(year, monthIndex) {
+      const date = new Date(year, monthIndex, 1);
+      const monthName = date.toLocaleDateString("tr-TR", { month: "long" });
+      return `${monthName.charAt(0).toLocaleUpperCase("tr-TR")}${monthName.slice(1)} ${year}`;
+    }
+
+    function dateValueForDay(day) {
+      const month = String(activeDataset.monthIndex + 1).padStart(2, "0");
+      const date = String(day).padStart(2, "0");
+      return `${activeDataset.year}-${month}-${date}`;
+    }
+
+    function dayFromDateValue(value) {
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) return null;
+      if (date.getFullYear() !== activeDataset.year || date.getMonth() !== activeDataset.monthIndex) return null;
+      return date.getDate();
+    }
+
+    function saveDatasets() {
+      localStorage.setItem(datasetStorageKey, JSON.stringify(customDatasets));
+    }
+
+    function allDatasets() {
+      const custom = customDatasets.filter(dataset => dataset.id !== julyDataset.id && dataset.label !== julyDataset.label);
+      return [builtInDataset, julyDataset, ...custom];
+    }
+
+    function parseCsv(text) {
+      const parsed = [];
+      let row = [];
+      let value = "";
+      let quoted = false;
+      for (let i = 0; i < text.length; i += 1) {
+        const char = text[i];
+        const next = text[i + 1];
+        if (quoted) {
+          if (char === '"' && next === '"') {
+            value += '"';
+            i += 1;
+          } else if (char === '"') {
+            quoted = false;
+          } else {
+            value += char;
+          }
+        } else if (char === '"') {
+          quoted = true;
+        } else if (char === "," || char === ";") {
+          row.push(value.trim());
+          value = "";
+        } else if (char === "\n") {
+          row.push(value.trim());
+          parsed.push(row);
+          row = [];
+          value = "";
+        } else if (char !== "\r") {
+          value += char;
+        }
+      }
+      row.push(value.trim());
+      parsed.push(row);
+      return parsed.filter(items => items.some(Boolean));
+    }
+
+    function csvToRows(text) {
+      const parsed = parseCsv(text);
+      const body = parsed[0]?.some(cell => /ad|soyad|sicil|bölüm|bolum/i.test(cell))
+        ? parsed.slice(1)
+        : parsed;
+      return body
+        .filter(row => row[1])
+        .map(row => [
+          row[0] || "Genel",
+          row[1] || "",
+          row[2] || "",
+          row.slice(4).map(cell => cell.trim())
+        ]);
+    }
+
+    function renderDatasetSelect() {
+      els.datasetSelect.innerHTML = "";
+      els.monthSelect.innerHTML = "";
+      allDatasets().forEach(dataset => {
+        const option = document.createElement("option");
+        option.value = dataset.id;
+        option.textContent = dataset.label;
+        els.datasetSelect.appendChild(option);
+        els.monthSelect.appendChild(option.cloneNode(true));
+      });
+      els.datasetSelect.value = activeDataset.id;
+      els.monthSelect.value = activeDataset.id;
+    }
+
+    function selectDataset(id) {
+      closeProfile();
+      activeDataset = allDatasets().find(dataset => dataset.id === id) || builtInDataset;
+      activeDays = buildDays(activeDataset.year, activeDataset.monthIndex, daysInMonth(activeDataset.year, activeDataset.monthIndex));
+      state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
+      state.shift = "morning";
+      state.query = "";
+      els.search.value = "";
+      renderDatasetSelect();
+      render();
+    }
+
+    function displayCode(raw, shift) {
+      const base = baseRaw(raw);
+      let label = "İzin";
+      if (base.toUpperCase() === "S") label = "08-16";
+      else if (base.toUpperCase() === "A") label = "14-22";
+      else if (base) label = base;
+      return label;
+    }
+
+    function codeClass(raw, shift) {
+      const value = baseRaw(raw);
+      if (value === "10-20") return "midshift";
+      if (value === "8-20" || value === "08-20") return "evening";
+      return shiftInfo[shift].className;
+    }
+
+    function codeChoices(raw) {
+      const value = baseRaw(raw);
+      const choices = codeOptions.map(option => {
+        if (option.value !== "İ") return option;
+        return { value: "İ", label: hasIcap(raw) ? "İcap kaldır" : "İcap ekle" };
+      }).map(option => {
+        const addon = addonOptions[option.value];
+        if (!addon) return option;
+        return {
+          value: option.value,
+          label: hasAddon(raw, option.value) ? `${addon.label} kaldır` : `${option.label} ekle`
+        };
+      });
+      return choices.some(option => option.value === value)
+        ? choices
+        : [...choices, { value, label: value }];
+    }
+
+    function addonBadges(raw) {
+      return parseRaw(raw).addons
+        .filter(key => key !== "ICAP" && addonOptions[key])
+        .map(key => addonOptions[key]);
+    }
+
+    function rowMatchesShift(row, shift) {
+      if (shift === "icap") return hasIcap(row.raw);
+      if (addonOptions[shift]) return hasAddon(row.raw, shift);
+      return row.shift === shift;
+    }
+
+    function selectedRows() {
+      const query = norm(state.query);
+      return activeDataset.rows
+        .map(([section, name, sicil, schedule]) => {
+          const raw = rawForRow(sicil, schedule);
+          const shift = classify(raw);
+          const specialty = specialtyFor(name);
+          section = sectionFor(section, name);
+          name = nameFor(name);
+          return { section, specialty, name, sicil, raw, shift };
+        })
+        .filter(row => rowMatchesShift(row, state.shift))
+        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.sicil}`).includes(query));
+    }
+
+    function rowsForShift(shift, queryText = state.query) {
+      const query = norm(queryText);
+      return activeDataset.rows
+        .map(([section, name, sicil, schedule]) => {
+          const raw = rawForRow(sicil, schedule);
+          const rowShift = classify(raw);
+          const specialty = specialtyFor(name);
+          section = sectionFor(section, name);
+          name = nameFor(name);
+          return { section, specialty, name, sicil, raw, shift: rowShift };
+        })
+        .filter(row => rowMatchesShift(row, shift))
+        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.sicil}`).includes(query));
+    }
+
+    function workingDoctorCount() {
+      return activeDataset.rows
+        .map(([, , sicil, schedule]) => rawForRow(sicil, schedule))
+        .filter(raw => ["morning", "evening", "night"].includes(classify(raw)))
+        .length;
+    }
+
+    function profileRowForSicil(sicil) {
+      const source = activeDataset.rows.find(row => row[2] === sicil);
+      if (!source) return null;
+      const [section, originalName, rowSicil, schedule] = source;
+      return {
+        section: sectionFor(section, originalName),
+        specialty: specialtyFor(originalName),
+        name: nameFor(originalName),
+        sicil: rowSicil,
+        schedule
+      };
+    }
+
+    function profileEntries(row) {
+      return activeDays.map(day => {
+        const raw = rawForRowDay(row.sicil, row.schedule, day.day);
+        const shift = classify(raw);
+        return {
+          day,
+          raw,
+          shift,
+          icap: hasIcap(raw),
+          label: displayCode(raw, shift),
+          className: codeClass(raw, shift)
+        };
+      });
+    }
+
+    function profileStats(entries) {
+      return {
+        morning: entries.filter(item => item.shift === "morning").length,
+        evening: entries.filter(item => item.shift === "evening").length,
+        night: entries.filter(item => item.shift === "night").length,
+        icap: entries.filter(item => item.icap).length,
+        off: entries.filter(item => item.shift === "off").length
+      };
+    }
+
+    function profileDateLabel(day) {
+      const date = new Date(activeDataset.year, activeDataset.monthIndex, day.day);
+      return date.toLocaleDateString("tr-TR", { weekday: "long", month: "long" });
+    }
+
+    function openProfile(sicil) {
+      const row = profileRowForSicil(sicil);
+      if (!row) return;
+      activeProfileSicil = sicil;
+      const entries = profileEntries(row);
+      const stats = profileStats(entries);
+      const today = todayForDataset(activeDataset);
+      const initials = initialsForName(row.name);
+      const canEditShifts = isAdminUser();
+      const readOnlyClass = canEditShifts ? "" : " readonly";
+      const readOnlyAttrs = canEditShifts ? "" : " disabled";
+      els.profileView.innerHTML = `
+        <div class="profile-head">
+          <div class="profile-head-main">
+            <button id="profileBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+            <div class="profile-identity">
+              <h2 class="profile-name">${row.name}</h2>
+              <div class="profile-meta">
+                <span class="tag">${row.section}</span>
+                <span class="tag">${row.specialty}</span>
+                <span class="tag">${activeDataset.label}</span>
+              </div>
+              <div class="profile-stats">
+                <span class="tag">Sabah ${stats.morning}</span>
+                <span class="tag">Akşam ${stats.evening}</span>
+                <span class="tag">Gece ${stats.night}</span>
+                <span class="tag">İcap ${stats.icap}</span>
+                <span class="tag">İzinli ${stats.off}</span>
+              </div>
+            </div>
+          </div>
+          <div class="profile-photo" aria-label="Profil fotoğrafı">${initials}</div>
+        </div>
+        <div class="profile-days">
+          ${entries.map(item => `
+            <div class="profile-day${item.day.day === today ? " today" : ""}">
+              <span><strong>${item.day.long}${item.day.day === today ? '<span class="profile-day-badge profile-today-badge">Bugün</span>' : ""}${isNightRaw(item.raw) ? '<span class="profile-day-badge profile-night-badge">Gece</span>' : ""}</strong><small>${item.icap ? "İcap var" : "İcap yok"}</small></span>
+              <button class="code-button ${item.className}${readOnlyClass}" type="button" data-profile-code="1" data-day="${item.day.day}" data-sicil="${row.sicil}" data-name="${row.name}" data-value="${item.raw}" aria-label="${row.name} ${item.day.long} vardiya seç"${readOnlyAttrs}>${item.label}</button>
+            </div>
+          `).join("")}
+        </div>
+      `;
+      els.profileView.hidden = false;
+      els.app.classList.add("profile-mode");
+      document.getElementById("profileBackButton").addEventListener("click", closeProfile);
+      els.profileView.querySelectorAll("[data-profile-code]").forEach(button => {
+        button.addEventListener("click", () => {
+          if (!isAdminUser()) return;
+          profileEditContext = {
+            sicil: row.sicil,
+            editedDay: Number(button.dataset.day),
+            previousDay: state.day
+          };
+          state.day = Number(button.dataset.day);
+          openCodeMenu(button);
+        });
+      });
+    }
+
+    function closeProfile() {
+      activeProfileSicil = null;
+      els.app.classList.remove("profile-mode");
+      els.profileView.hidden = true;
+      els.profileView.innerHTML = "";
+    }
+
+    function shiftForQuery(queryText) {
+      if (!queryText.trim()) return state.shift;
+      if (rowsForShift(state.shift, queryText).length) return state.shift;
+      return shiftOrder.find(shift => rowsForShift(shift, queryText).length) || state.shift;
+    }
+
+    function importCsvText(text) {
+      const monthValue = els.importMonth.value;
+      if (!monthValue) {
+        els.importStatus.textContent = "Ay seçimi gerekli.";
+        return;
+      }
+      if (!text.trim()) {
+        els.importStatus.textContent = "CSV içeriği bulunamadı.";
+        return;
+      }
+      const [yearText, monthText] = monthValue.split("-");
+      const year = Number(yearText);
+      const monthIndex = Number(monthText) - 1;
+      const label = labelForMonth(year, monthIndex);
+      try {
+        const importedRows = csvToRows(text);
+        if (!importedRows.length) {
+          els.importStatus.textContent = "CSV içinde vardiya satırı bulunamadı.";
+          return;
+        }
+        const dataset = {
+          id: `dataset-${Date.now()}`,
+          label,
+          year,
+          monthIndex,
+          rows: importedRows
+        };
+        customDatasets = customDatasets.filter(item => item.label !== label);
+        customDatasets.unshift(dataset);
+        saveDatasets();
+        els.importFile.value = "";
+        els.importText.value = "";
+        els.importStatus.textContent = `${label} yüklendi: ${importedRows.length} hekim.`;
+        selectDataset(dataset.id);
+      } catch {
+        els.importStatus.textContent = "CSV okunamadı.";
+      }
+    }
+
+    function renderDays() {
+      els.dayStrip.innerHTML = "";
+      const today = todayForDataset(activeDataset);
+      activeDays.forEach(day => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "day"
+          + (day.day === state.day ? " active" : "")
+          + (day.day === today ? " today" : "");
+        if (day.day === today) button.setAttribute("aria-label", `${day.long}, bugün`);
+        button.innerHTML = `<strong>${day.day}</strong><span>${day.short}</span>`;
+        button.addEventListener("click", () => {
+          state.day = day.day;
+          render();
+          alignSelectedDay("smooth");
+        });
+        els.dayStrip.appendChild(button);
+      });
+    }
+
+    function alignSelectedDay(behavior = "auto") {
+      const selected = els.dayStrip.querySelector(".day.active");
+      if (!selected) return;
+      const stripRect = els.dayStrip.getBoundingClientRect();
+      const dayRect = selected.getBoundingClientRect();
+      const isOutside = dayRect.left < stripRect.left || dayRect.right > stripRect.right;
+      if (!isOutside) return;
+      const targetLeft = selected.offsetLeft + selected.offsetWidth - els.dayStrip.clientWidth;
+      els.dayStrip.scrollTo({ left: Math.max(0, targetLeft), behavior });
+    }
+
+    function renderTabs() {
+      els.tabs.forEach(tab => tab.classList.toggle("active", tab.dataset.shift === state.shift));
+      els.morningTabCount.textContent = `${rowsForShift("morning", "").length} kişi`;
+      els.eveningTabCount.textContent = `${rowsForShift("evening", "").length} kişi`;
+      els.nightTabCount.textContent = `${rowsForShift("night", "").length} kişi`;
+      els.icapTabCount.textContent = `${rowsForShift("icap", "").length} kişi`;
+      els.offTabCount.textContent = `${rowsForShift("off", "").length} kişi`;
+      els.catServiceTabCount.textContent = `${rowsForShift("KEDI_SERVIS", "").length} kişi`;
+      els.dogServiceTabCount.textContent = `${rowsForShift("KOPEK_SERVIS", "").length} kişi`;
+      els.infectionTabCount.textContent = `${rowsForShift("ENFEKSIYON", "").length} kişi`;
+    }
+
+    function renderList() {
+      const list = selectedRows();
+      const info = shiftInfo[state.shift];
+      const day = activeDays[state.day - 1];
+      els.activeShiftLabel.textContent = `${info.label} şifti`;
+      els.dateTitle.innerHTML = `${day.long}${day.day === todayForDataset(activeDataset) ? '<span class="today-badge">Bugün</span>' : ""}`;
+      els.prevDay.disabled = state.day <= 1;
+      els.nextDay.disabled = state.day >= activeDays.length;
+      els.countLabel.textContent = `${workingDoctorCount()} çalışan hekim`;
+      els.ruleLabel.textContent = info.rule;
+      els.doctorList.innerHTML = "";
+      if (!list.length) {
+        els.doctorList.innerHTML = `<div class="empty">Bu filtrede hekim bulunamadı.</div>`;
+        return;
+      }
+      let currentSection = "";
+      const canEditShifts = isAdminUser();
+      list.forEach(row => {
+        if (row.section !== currentSection) {
+          currentSection = row.section;
+          const title = document.createElement("h3");
+          title.className = "section-title";
+          title.textContent = currentSection;
+          els.doctorList.appendChild(title);
+        }
+        const item = document.createElement("div");
+        item.className = "doctor";
+        const icapBadge = hasIcap(row.raw) ? `<span class="list-badge icap-badge">İcap</span>` : "";
+        const serviceBadges = addonBadges(row.raw)
+          .map(addon => `<span class="list-badge ${addon.className}">${addon.label}</span>`)
+          .join("");
+        const readOnlyClass = canEditShifts ? "" : " readonly";
+        const readOnlyAttrs = canEditShifts ? "" : " disabled";
+        item.innerHTML = `
+          <span><button class="doctor-name" type="button" data-sicil="${row.sicil}"><b>${row.name}</b></button>${icapBadge}${serviceBadges}<small>${row.specialty}</small></span>
+          <button class="code-button ${codeClass(row.raw, row.shift)}${readOnlyClass}" type="button" data-sicil="${row.sicil}" data-name="${row.name}" data-value="${row.raw}" aria-label="${row.name} vardiya seç"${readOnlyAttrs}>
+            ${displayCode(row.raw, row.shift)}
+          </button>
+        `;
+        els.doctorList.appendChild(item);
+      });
+    }
+
+    function render() {
+      renderDays();
+      renderTabs();
+      renderList();
+      requestAnimationFrame(() => alignSelectedDay());
+    }
+
+    function goHome() {
+      closeProfile();
+      closeDrawer();
+      closeCodeMenu();
+      state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
+      state.shift = "morning";
+      state.query = "";
+      els.search.value = "";
+      render();
+    }
+
+    function selectShiftFromEvent(event) {
+      const tab = event.target.closest(".shift-tab");
+      if (!tab) return;
+      state.shift = tab.dataset.shift;
+      render();
+    }
+
+    function openDrawer() {
+      els.drawer.classList.add("open");
+      els.drawer.setAttribute("aria-hidden", "false");
+      els.drawerBackdrop.hidden = false;
+    }
+
+    function closeDrawer() {
+      els.drawer.classList.remove("open");
+      els.drawer.setAttribute("aria-hidden", "true");
+      els.drawerBackdrop.hidden = true;
+    }
+
+    function changeDay(delta) {
+      const nextDay = Math.min(activeDays.length, Math.max(1, state.day + delta));
+      if (nextDay === state.day) return;
+      state.day = nextDay;
+      render();
+      alignSelectedDay("smooth");
+    }
+
+    function renderAfterCodeEdit(sicil) {
+      const context = profileEditContext;
+      profileEditContext = null;
+      render();
+      if (context?.sicil) {
+        openProfile(context.sicil);
+        state.day = context.previousDay;
+        requestAnimationFrame(() => {
+          const edited = els.profileView.querySelector(`[data-profile-code][data-day="${context.editedDay}"]`);
+          edited?.scrollIntoView({ block: "center" });
+        });
+      }
+    }
+
+    function applyShiftValue(sicil, value, currentValue) {
+      let nextValue = value;
+      if (value === "İ") {
+        openIcapRangeMenu(sicil, currentValue);
+        return;
+      } else if (addonOptions[value]) {
+        nextValue = hasAddon(currentValue, value) ? withoutAddon(currentValue, value) : withAddon(currentValue, value);
+        saveOverrideValue(rowKey(sicil, state.day), nextValue);
+        closeCodeMenu();
+        renderAfterCodeEdit(sicil);
+        return;
+      } else {
+        nextValue = rawFromParts(value, parseRaw(currentValue).addons);
+      }
+      saveOverrideValue(rowKey(sicil, state.day), nextValue);
+      state.shift = classify(nextValue);
+      closeCodeMenu();
+      renderAfterCodeEdit(sicil);
+    }
+
+    function applyIcapRange(sicil, mode, startDay, endDay) {
+      const row = activeDataset.rows.find(items => items[2] === sicil);
+      if (!row) return;
+      const schedule = row[3];
+      const firstDay = Math.min(startDay, endDay);
+      const lastDay = Math.max(startDay, endDay);
+      for (let day = firstDay; day <= lastDay; day += 1) {
+        const original = schedule[day - 1] || "";
+        const current = rawForRowDay(sicil, schedule, day);
+        const next = mode === "add" ? withIcap(current) : withoutIcap(current);
+        const key = rowKey(sicil, day);
+        if (next === original) {
+          saveOverrideValue(key, next, true);
+        } else {
+          saveOverrideValue(key, next);
+        }
+      }
+      closeCodeMenu();
+      renderAfterCodeEdit(sicil);
+    }
+
+    function openIcapRangeMenu(sicil, currentValue) {
+      const mode = hasIcap(currentValue) ? "remove" : "add";
+      const minDate = dateValueForDay(1);
+      const maxDate = dateValueForDay(activeDays.length);
+      const selectedDate = dateValueForDay(state.day);
+      els.codeMenuTitle.textContent = mode === "add" ? "İcap tarih aralığı" : "İcap kaldır";
+      els.codeMenuOptions.classList.add("range-mode");
+      els.codeMenuOptions.innerHTML = `
+        <div class="code-range">
+          <div class="code-range-fields">
+            <label>Başlangıç<input id="icapStartDate" type="date" min="${minDate}" max="${maxDate}" value="${selectedDate}"></label>
+            <label>Bitiş<input id="icapEndDate" type="date" min="${minDate}" max="${maxDate}" value="${selectedDate}"></label>
+          </div>
+          <button id="icapRangeApply" class="code-range-apply" type="button">${mode === "add" ? "İcap ekle" : "İcap kaldır"}</button>
+          <div id="icapRangeError" class="code-range-error"></div>
+        </div>
+      `;
+      const startInput = document.getElementById("icapStartDate");
+      const endInput = document.getElementById("icapEndDate");
+      const error = document.getElementById("icapRangeError");
+      document.getElementById("icapRangeApply").addEventListener("click", () => {
+        const startDay = dayFromDateValue(startInput.value);
+        const endDay = dayFromDateValue(endInput.value);
+        if (!startDay || !endDay) {
+          error.textContent = "Tarihler seçili ay içinde olmalı.";
+          return;
+        }
+        applyIcapRange(sicil, mode, startDay, endDay);
+      });
+    }
+
+    function openCodeMenu(button) {
+      const sicil = button.dataset.sicil;
+      const currentValue = button.dataset.value || "";
+      els.codeMenuTitle.textContent = button.dataset.name || "Vardiya seç";
+      els.codeMenuOptions.innerHTML = "";
+      els.codeMenuOptions.classList.remove("range-mode");
+      codeChoices(currentValue).forEach(option => {
+        const choice = document.createElement("button");
+        choice.type = "button";
+        const isActive = option.value === "İ"
+          ? hasIcap(currentValue)
+          : addonOptions[option.value]
+            ? hasAddon(currentValue, option.value)
+            : option.value === baseRaw(currentValue);
+        choice.className = "code-choice" + (isActive ? " active" : "");
+        choice.textContent = option.label;
+        choice.dataset.value = option.value;
+        choice.addEventListener("click", () => applyShiftValue(sicil, option.value, currentValue));
+        els.codeMenuOptions.appendChild(choice);
+      });
+      els.codeMenu.hidden = false;
+      els.codeMenuBackdrop.hidden = false;
+      els.codeMenu.setAttribute("aria-hidden", "false");
+    }
+
+    function closeCodeMenu() {
+      els.codeMenu.hidden = true;
+      els.codeMenuBackdrop.hidden = true;
+      els.codeMenu.setAttribute("aria-hidden", "true");
+      els.codeMenuOptions.innerHTML = "";
+      els.codeMenuOptions.classList.remove("range-mode");
+    }
+
+    document.querySelectorAll(".shift-tabs").forEach(tabGroup => {
+      tabGroup.addEventListener("click", selectShiftFromEvent);
+      tabGroup.addEventListener("touchend", event => {
+        event.preventDefault();
+        selectShiftFromEvent(event);
+      }, { passive: false });
+    });
+    els.search.addEventListener("input", () => {
+      state.query = els.search.value;
+      state.shift = shiftForQuery(state.query);
+      renderTabs();
+      renderList();
+    });
+    els.today.addEventListener("click", () => {
+      state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
+      render();
+    });
+    els.prevDay.addEventListener("click", () => changeDay(-1));
+    els.nextDay.addEventListener("click", () => changeDay(1));
+    els.doctorList.addEventListener("click", event => {
+      const nameButton = event.target.closest(".doctor-name");
+      if (nameButton) {
+        openProfile(nameButton.dataset.sicil);
+        return;
+      }
+      const button = event.target.closest(".code-button");
+      if (!button) return;
+      if (!isAdminUser()) return;
+      profileEditContext = null;
+      openCodeMenu(button);
+    });
+    els.codeMenuClose.addEventListener("click", () => {
+      profileEditContext = null;
+      closeCodeMenu();
+    });
+    els.codeMenuBackdrop.addEventListener("click", () => {
+      profileEditContext = null;
+      closeCodeMenu();
+    });
+    els.importButton.addEventListener("click", () => {
+      const file = els.importFile.files[0];
+      if (!file || !els.importMonth.value) {
+        els.importStatus.textContent = "Ay seçimi ve CSV dosyası gerekli.";
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        importCsvText(String(reader.result || ""));
+      };
+      reader.onerror = () => {
+        els.importStatus.textContent = "CSV dosyası açılamadı.";
+      };
+      reader.readAsText(file, "utf-8");
+    });
+    els.importTextButton.addEventListener("click", () => {
+      importCsvText(els.importText.value);
+    });
+    els.resetOverridesButton.addEventListener("click", resetManualOverrides);
+    els.authForm.addEventListener("submit", event => {
+      event.preventDefault();
+      if (els.authScreen.classList.contains("register-mode")) {
+        registerUser();
+        return;
+      }
+      const username = els.authUsername.value.trim().toLocaleLowerCase("tr-TR");
+      if (isValidLogin(username, els.authPassword.value)) {
+        saveAuth(username);
+        unlockApp();
+        return;
+      }
+      els.authError.textContent = "Kullanıcı adı veya şifre hatalı.";
+      els.authPassword.value = "";
+      els.authPassword.focus();
+    });
+    els.showRegisterButton.addEventListener("click", showRegisterScreen);
+    els.showLoginButton.addEventListener("click", showLoginScreen);
+    els.createAccountButton.addEventListener("click", registerUser);
+    els.logoutButton.addEventListener("click", lockApp);
+    els.datasetSelect.addEventListener("change", () => {
+      selectDataset(els.datasetSelect.value);
+    });
+    els.monthSelect.addEventListener("change", () => {
+      selectDataset(els.monthSelect.value);
+    });
+    els.homeButton.addEventListener("click", goHome);
+    els.menuButton.addEventListener("click", openDrawer);
+    els.drawerClose.addEventListener("click", closeDrawer);
+    els.drawerBackdrop.addEventListener("click", closeDrawer);
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape") {
+        closeDrawer();
+        profileEditContext = null;
+        closeCodeMenu();
+      }
+    });
+    window.addEventListener("focus", syncWhenAppBecomesActive);
+    window.addEventListener("pageshow", forceSupabaseRefresh);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) syncWhenAppBecomesActive();
+    });
+    renderDatasetSelect();
+    renderAppVersion();
+    render();
+    initAuth();
+    loadSupabaseOverrides({ replace: true, syncLocal: false });
+    startSupabaseRealtime();
+    startSupabasePollingFallback();
+  </script>
+</body>
+</html>
