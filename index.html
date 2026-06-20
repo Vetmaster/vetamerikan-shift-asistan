@@ -991,6 +991,7 @@
         <div id="importStatus" class="import-status"></div>
       </div>
       <button id="notificationButton" type="button">Bildirimlere izin ver</button>
+      <button id="notificationTestButton" type="button">Bildirim testi</button>
       <div id="notificationStatus" class="import-status"></div>
       <div id="appVersionLabel" class="import-status"></div>
       <button id="logoutButton" type="button">Çıkış yap</button>
@@ -1022,7 +1023,7 @@
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
-    const appVersion = "2026.06.20.5";
+    const appVersion = "2026.06.20.6";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
@@ -1241,6 +1242,7 @@
       resetOverridesButton: document.getElementById("resetOverridesButton"),
       adminDatabaseTools: document.getElementById("adminDatabaseTools"),
       notificationButton: document.getElementById("notificationButton"),
+      notificationTestButton: document.getElementById("notificationTestButton"),
       notificationStatus: document.getElementById("notificationStatus"),
       appVersionLabel: document.getElementById("appVersionLabel"),
       logoutButton: document.getElementById("logoutButton"),
@@ -1520,18 +1522,18 @@
     function updateNotificationStatus() {
       if (!("Notification" in window)) {
         els.notificationButton.disabled = true;
-        els.notificationStatus.textContent = "Bu tarayıcı sistem bildirimini desteklemiyor.";
+        els.notificationStatus.textContent = "Sistem bildirimi desteklenmiyor; uygulama içi bildirim kullanılacak.";
         return;
       }
       const permission = Notification.permission;
       els.notificationButton.textContent = permission === "granted" ? "Bildirimler açık" : "Bildirimlere izin ver";
       els.notificationButton.disabled = permission === "denied";
       if (permission === "granted") {
-        els.notificationStatus.textContent = "İcap değişikliklerinde bildirim gösterilecek.";
+        els.notificationStatus.textContent = "Sistem ve uygulama içi bildirim açık.";
       } else if (permission === "denied") {
-        els.notificationStatus.textContent = "Bildirim izni tarayıcı ayarlarından kapalı.";
+        els.notificationStatus.textContent = "Sistem bildirimi kapalı; uygulama içi bildirim gösterilecek.";
       } else {
-        els.notificationStatus.textContent = "İzin verirsen icap değişikliklerinde uyarı alırsın.";
+        els.notificationStatus.textContent = "İzin verirsen sistem bildirimi de gösterilir.";
       }
     }
 
@@ -1543,6 +1545,11 @@
       const permission = await Notification.requestPermission();
       if (permission === "granted") localStorage.setItem(notificationStorageKey, "1");
       updateNotificationStatus();
+    }
+
+    function testNotifications() {
+      showShiftNotification("Bildirim testi", "Vetamerikan Shift Asistan bildirimleri çalışıyor.");
+      els.notificationStatus.textContent = "Test bildirimi gönderildi.";
     }
 
     function showToast(title, body) {
@@ -2437,6 +2444,7 @@
     });
     els.resetOverridesButton.addEventListener("click", resetManualOverrides);
     els.notificationButton.addEventListener("click", requestNotifications);
+    els.notificationTestButton.addEventListener("click", testNotifications);
     els.authForm.addEventListener("submit", event => {
       event.preventDefault();
       if (els.authScreen.classList.contains("register-mode")) {
