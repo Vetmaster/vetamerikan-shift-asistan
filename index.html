@@ -1150,8 +1150,10 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.26";
+    const appVersion = "2026.06.20.27";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
+    const authEmailDomain = "vetamerikan-shift.com";
+    let lastAuthError = "";
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
       evening: { label: "Akşam", rule: "A veya akşam saatleri", className: "evening" },
@@ -1412,8 +1414,12 @@
       return savedUsers()[username] === password;
     }
 
+    function authUsername(username) {
+      return norm(username).replace(/[^a-z0-9._-]/g, "") || "kullanici";
+    }
+
     function usernameToAuthEmail(username) {
-      return `${username.trim().toLocaleLowerCase("tr-TR").replace(/[^a-z0-9._-]/gi, "")}@vetamerikan.local`;
+      return `${authUsername(username)}@${authEmailDomain}`;
     }
 
     function usernameFromAuthEmail(email) {
@@ -1421,17 +1427,22 @@
     }
 
     async function signInWithSupabase(username, password) {
+      lastAuthError = "";
       if (!supabaseClient) return false;
       const { data, error } = await supabaseClient.auth.signInWithPassword({
         email: usernameToAuthEmail(username),
         password
       });
-      if (error) return false;
+      if (error) {
+        lastAuthError = error.message;
+        return false;
+      }
       saveAuth(data.user?.user_metadata?.username || usernameFromAuthEmail(data.user?.email) || username);
       return true;
     }
 
     async function signUpWithSupabase(username, password) {
+      lastAuthError = "";
       if (!supabaseClient) throw new Error("Supabase bağlantısı yok.");
       const { data, error } = await supabaseClient.auth.signUp({
         email: usernameToAuthEmail(username),
@@ -1439,6 +1450,11 @@
         options: { data: { username } }
       });
       if (error) throw error;
+      if (!data.session) {
+        const signedIn = await signInWithSupabase(username, password);
+        if (!signedIn) throw new Error(lastAuthError || "Kayıt oluşturuldu ama oturum açılamadı.");
+        return;
+      }
       saveAuth(data.user?.user_metadata?.username || username);
     }
 
@@ -2867,7 +2883,9 @@
         unlockApp();
         return;
       }
-      els.authError.textContent = "Kullanıcı adı veya şifre hatalı.";
+      els.authError.textContent = lastAuthError
+        ? `Supabase: ${lastAuthError}`
+        : "Kullanıcı adı veya şifre hatalı.";
       els.authPassword.value = "";
       els.authPassword.focus();
     });
