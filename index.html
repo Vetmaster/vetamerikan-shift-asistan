@@ -742,6 +742,21 @@
       display: grid;
       gap: 10px;
     }
+    .notification-clear-button {
+      justify-self: end;
+      align-self: start;
+      min-height: 36px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 12px;
+      font-size: 12px;
+      font-weight: 900;
+    }
+    .notification-clear-button:disabled {
+      opacity: .45;
+    }
     .notification-item {
       padding: 12px;
       border: 1px solid var(--line);
@@ -1171,7 +1186,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.20.32";
+    const appVersion = "2026.06.20.33";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1852,6 +1867,7 @@
               <span class="tag">${items.filter(item => !item.read).length} okunmamış</span>
             </div>
           </div>
+          <button id="notificationClearButton" class="notification-clear-button" type="button"${items.length ? "" : " disabled"}>Bildirimleri temizle</button>
         </div>
         <div class="notification-list">
           ${items.length ? items.map(item => `
@@ -1864,6 +1880,13 @@
         </div>
       `;
       document.getElementById("notificationBackButton").addEventListener("click", closeNotificationCenter);
+      document.getElementById("notificationClearButton").addEventListener("click", clearNotifications);
+    }
+
+    function clearNotifications() {
+      saveNotifications([]);
+      renderNotificationBadge();
+      renderNotificationCenter();
     }
 
     function openNotificationCenter() {
