@@ -1206,7 +1206,7 @@
         </label>
         <label>
           BE
-          <input id="bicarbBe" type="number" inputmode="decimal" step="0.1" placeholder="Örn. -10">
+          <input id="bicarbBe" type="text" inputmode="decimal" pattern="-?[0-9]*[.,]?[0-9]*" placeholder="Örn. -10">
         </label>
         <label>
           Mevcut HCO₃ (mEq/L)
@@ -1284,7 +1284,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.22.11";
+    const appVersion = "2026.06.22.12";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1646,10 +1646,14 @@
       els.bicarbToolButton.hidden = !isAdminUser();
     }
 
+    function numberFromInput(input) {
+      return Number(String(input.value).replace(",", "."));
+    }
+
     function calculateBicarbonate() {
       const weight = Number(els.bicarbWeight.value);
       const ph = Number(els.bicarbPh.value);
-      const be = Number(els.bicarbBe.value);
+      const be = numberFromInput(els.bicarbBe);
       const current = Number(els.bicarbCurrent.value);
       const target = Number(els.bicarbTarget.value);
       const fluidVolume = Number(els.bicarbFluidVolume.value);
