@@ -1010,7 +1010,8 @@
       font-size: 12px;
       font-weight: 800;
     }
-    .drawer-tool input {
+    .drawer-tool input,
+    .drawer-tool select {
       width: 100%;
       min-height: 44px;
       border: 1px solid var(--line);
@@ -1019,6 +1020,11 @@
       color: var(--ink);
       padding: 0 10px;
       font-weight: 700;
+    }
+    .bicarb-timing-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
     }
     .drawer-tool-result {
       min-height: 42px;
@@ -1206,7 +1212,7 @@
         </label>
         <label>
           BE
-          <input id="bicarbBe" type="text" inputmode="decimal" pattern="-?[0-9]*[.,]?[0-9]*" placeholder="Örn. -10">
+          <input id="bicarbBe" type="text" inputmode="decimal" pattern="-?[0-9]*[.,]?[0-9]*" placeholder="Örn. 10">
         </label>
         <label>
           Mevcut HCO₃ (mEq/L)
@@ -1223,10 +1229,16 @@
             <option value="100">100 mililitrelik sıvı</option>
           </select>
         </label>
-        <label>
-          Verilecek süre (saat)
-          <input id="bicarbDuration" type="number" inputmode="decimal" min="0" step="0.25" placeholder="Örn. 4">
-        </label>
+        <div class="bicarb-timing-row">
+          <label>
+            Verilecek süre (saat)
+            <input id="bicarbDuration" type="number" inputmode="decimal" min="0" step="0.25" placeholder="Örn. 4">
+          </label>
+          <label>
+            mL/saat
+            <input id="bicarbRate" type="number" inputmode="decimal" min="0" step="0.1" placeholder="Örn. 18">
+          </label>
+        </div>
         <div id="bicarbResult" class="drawer-tool-result">Eksik değerleri girin.</div>
       </div>
     </section>
@@ -1284,7 +1296,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.22.12";
+    const appVersion = "2026.06.22.17";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1472,6 +1484,7 @@
     let supabasePollTimer = null;
     let lastRemoteFingerprint = "";
     let lastNotificationFingerprint = "";
+    let bicarbTimingMode = "duration";
     let hasLoadedRemoteOverrides = false;
     let suppressAddonNotifications = false;
     const pendingOverrideKeys = new Set();
@@ -1527,6 +1540,7 @@
       bicarbTarget: document.getElementById("bicarbTarget"),
       bicarbFluidVolume: document.getElementById("bicarbFluidVolume"),
       bicarbDuration: document.getElementById("bicarbDuration"),
+      bicarbRate: document.getElementById("bicarbRate"),
       bicarbResult: document.getElementById("bicarbResult"),
       logoutButton: document.getElementById("logoutButton"),
       importStatus: document.getElementById("importStatus"),
@@ -1650,19 +1664,51 @@
       return Number(String(input.value).replace(",", "."));
     }
 
+    function normalizeBicarbonateBaseInput() {
+      const value = els.bicarbBe.value.trim();
+      if (!value || value === "-") return;
+      els.bicarbBe.value = value.startsWith("-") ? value : `-${value}`;
+    }
+
+    function bicarbonateBaseValue() {
+      const value = String(els.bicarbBe.value).replace(",", ".").trim();
+      if (!value || value === "-") return NaN;
+      const numeric = Number(value.startsWith("-") ? value : `-${value}`);
+      return numeric;
+    }
+
+    function syncBicarbonateTiming() {
+      const fluidVolume = Number(els.bicarbFluidVolume.value);
+      const duration = Number(els.bicarbDuration.value);
+      const rate = Number(els.bicarbRate.value);
+      if (!(fluidVolume > 0)) return;
+      if (bicarbTimingMode === "duration" && duration > 0) {
+        els.bicarbRate.value = (fluidVolume / duration).toFixed(1);
+      } else if (bicarbTimingMode === "rate" && rate > 0) {
+        els.bicarbDuration.value = (fluidVolume / rate).toFixed(2).replace(/\.00$/, "");
+      }
+    }
+
     function calculateBicarbonate() {
       const weight = Number(els.bicarbWeight.value);
       const ph = Number(els.bicarbPh.value);
-      const be = numberFromInput(els.bicarbBe);
+      const be = bicarbonateBaseValue();
       const current = Number(els.bicarbCurrent.value);
       const target = Number(els.bicarbTarget.value);
       const fluidVolume = Number(els.bicarbFluidVolume.value);
-      const duration = Number(els.bicarbDuration.value);
+      let duration = Number(els.bicarbDuration.value);
+      let rate = Number(els.bicarbRate.value);
       const hasPh = els.bicarbPh.value !== "" && Number.isFinite(ph);
       const hasBe = els.bicarbBe.value !== "" && Number.isFinite(be);
       const hasCurrent = els.bicarbCurrent.value !== "" && Number.isFinite(current);
       const hasTarget = els.bicarbTarget.value !== "" && Number.isFinite(target);
-      const hasDuration = els.bicarbDuration.value !== "" && duration > 0;
+      let hasDuration = els.bicarbDuration.value !== "" && duration > 0;
+      let hasRate = els.bicarbRate.value !== "" && rate > 0;
+      syncBicarbonateTiming();
+      duration = Number(els.bicarbDuration.value);
+      rate = Number(els.bicarbRate.value);
+      hasDuration = els.bicarbDuration.value !== "" && duration > 0;
+      hasRate = els.bicarbRate.value !== "" && rate > 0;
       const decision = [];
       if (hasPh && hasBe && ph >= 7.25 && be >= -6 && be <= -3) {
         decision.push("Genelde bikarbonat verme. Sıvı, perfüzyon ve altta yatan nedeni düzelt.");
@@ -1699,12 +1745,10 @@
       const lines = doseOptions.map(item => {
         const half = item.dose / 2;
         const third = item.dose / 3;
-        const halfTotal = fluidVolume + half;
-        const thirdTotal = fluidVolume + third;
         const rateText = hasDuration
-          ? ` 1/2 doz toplam ${halfTotal.toFixed(1)} mL -> ${duration.toFixed(2)} saatte ${ (halfTotal / duration).toFixed(1) } mL/saat. 1/3 doz toplam ${thirdTotal.toFixed(1)} mL -> ${ (thirdTotal / duration).toFixed(1) } mL/saat.`
+          ? ` Seçili ${fluidVolume} mL sıvı ${duration.toFixed(2).replace(/\.00$/, "")} saatte ${rate.toFixed(1)} mL/saat gider.`
           : " Süre girilirse mL/saat hesaplanır.";
-        return `${item.label}: ${item.dose.toFixed(1)} mEq = ${item.dose.toFixed(1)} mL %8.4 NaHCO3<small>Başlangıç: 1/2 doz ${half.toFixed(1)} mL; 1/3 doz ${third.toFixed(1)} mL. ${fluidVolume} mL sıvı seçildi.${rateText} Sonra kan gazı ile yeniden hesapla.</small>`;
+        return `${item.label}: ${item.dose.toFixed(1)} mEq = ${item.dose.toFixed(1)} mL %8.4 NaHCO3<small>Başlangıç: 1/2 doz ${half.toFixed(1)} mL; 1/3 doz ${third.toFixed(1)} mL. ${fluidVolume} mL sıvı seçildi.${rateText} Serumun içinden eklenecek HCO3 hacmi kadar sıvı çıkar: 1/2 doz için ${half.toFixed(1)} mL, 1/3 doz için ${third.toFixed(1)} mL. Sonra kan gazı ile yeniden hesapla.</small>`;
       });
       els.bicarbResult.innerHTML = `${decision.length ? `${decision.join("<br>")}<br>` : ""}${lines.join("<br>")}`;
     }
@@ -3182,7 +3226,12 @@
     els.excelImportButton.addEventListener("click", importExcelFile);
     els.bicarbToolButton.addEventListener("click", openBicarbonateTool);
     els.bicarbBackButton.addEventListener("click", goHome);
-    [els.bicarbWeight, els.bicarbPh, els.bicarbBe, els.bicarbCurrent, els.bicarbTarget, els.bicarbFluidVolume, els.bicarbDuration].forEach(input => {
+    els.bicarbBe.addEventListener("input", normalizeBicarbonateBaseInput);
+    els.bicarbDuration.addEventListener("input", () => { bicarbTimingMode = "duration"; });
+    els.bicarbDuration.addEventListener("change", () => { bicarbTimingMode = "duration"; });
+    els.bicarbRate.addEventListener("input", () => { bicarbTimingMode = "rate"; });
+    els.bicarbRate.addEventListener("change", () => { bicarbTimingMode = "rate"; });
+    [els.bicarbWeight, els.bicarbPh, els.bicarbBe, els.bicarbCurrent, els.bicarbTarget, els.bicarbFluidVolume, els.bicarbDuration, els.bicarbRate].forEach(input => {
       input.addEventListener("input", calculateBicarbonate);
       input.addEventListener("change", calculateBicarbonate);
     });
