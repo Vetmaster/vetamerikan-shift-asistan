@@ -488,6 +488,15 @@
       color: var(--muted);
       font-size: 12px;
     }
+    .doctor-extension {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      margin-left: 8px;
+      color: var(--ink);
+      font-weight: 800;
+      white-space: nowrap;
+    }
     .code {
       min-width: 58px;
       min-height: 34px;
@@ -553,7 +562,12 @@
     .app.notification-mode .summary,
     .app.notification-mode .search,
     .app.notification-mode .day-strip,
-    .app.notification-mode #doctorList {
+    .app.notification-mode #doctorList,
+    .app.bicarb-mode .shift-tabs,
+    .app.bicarb-mode .summary,
+    .app.bicarb-mode .search,
+    .app.bicarb-mode .day-strip,
+    .app.bicarb-mode #doctorList {
       display: none;
     }
     .profile-view {
@@ -976,6 +990,56 @@
       color: var(--muted);
       font-size: 12px;
     }
+    .drawer-tool {
+      display: grid;
+      gap: 8px;
+      padding: 10px 0;
+      border-top: 1px solid var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .drawer-tool h3 {
+      margin: 0;
+      color: var(--brand);
+      font-size: 14px;
+      font-weight: 900;
+    }
+    .drawer-tool label {
+      display: grid;
+      gap: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .drawer-tool input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 0 10px;
+      font-weight: 700;
+    }
+    .drawer-tool-result {
+      min-height: 42px;
+      display: grid;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px solid rgba(15, 108, 116, .24);
+      border-radius: 8px;
+      background: var(--soft);
+      color: var(--ink);
+      font-size: 13px;
+      font-weight: 900;
+      line-height: 1.4;
+    }
+    .drawer-tool-result small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 800;
+    }
     .toast-area {
       position: fixed;
       left: 12px;
@@ -1124,6 +1188,48 @@
     <section id="doctorList" class="card"></section>
     <section id="profileView" class="profile-view card" hidden></section>
     <section id="notificationView" class="profile-view card" hidden></section>
+    <section id="bicarbView" class="profile-view card" hidden>
+      <div class="profile-head-main">
+        <button id="bicarbBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+        <div class="profile-identity">
+          <h2 class="profile-name">Bikarbonat hesaplama</h2>
+        </div>
+      </div>
+      <div class="drawer-tool" aria-label="Bikarbonat hesaplama">
+        <label>
+          Kilo (kg)
+          <input id="bicarbWeight" type="number" inputmode="decimal" min="0" step="0.1" placeholder="Örn. 12">
+        </label>
+        <label>
+          Venöz pH
+          <input id="bicarbPh" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Örn. 7.18">
+        </label>
+        <label>
+          BE
+          <input id="bicarbBe" type="number" inputmode="decimal" step="0.1" placeholder="Örn. -10">
+        </label>
+        <label>
+          Mevcut HCO₃ (mEq/L)
+          <input id="bicarbCurrent" type="number" inputmode="decimal" min="0" step="0.1" placeholder="Örn. 12">
+        </label>
+        <label>
+          Hedef HCO₃ (mEq/L)
+          <input id="bicarbTarget" type="number" inputmode="decimal" min="0" step="0.1" value="16">
+        </label>
+        <label>
+          Sıvı hacmi
+          <select id="bicarbFluidVolume">
+            <option value="50">50 mililitrelik sıvı</option>
+            <option value="100">100 mililitrelik sıvı</option>
+          </select>
+        </label>
+        <label>
+          Verilecek süre (saat)
+          <input id="bicarbDuration" type="number" inputmode="decimal" min="0" step="0.25" placeholder="Örn. 4">
+        </label>
+        <div id="bicarbResult" class="drawer-tool-result">Eksik değerleri girin.</div>
+      </div>
+    </section>
   </main>
 
   <div id="drawerBackdrop" class="drawer-backdrop" hidden></div>
@@ -1138,6 +1244,7 @@
         <button id="excelImportButton" type="button">Excel yükle ve database oluştur</button>
         <div id="importStatus" class="import-status"></div>
       </div>
+      <button id="bicarbToolButton" class="admin-only" type="button">Bikarbonat hesaplama</button>
       <div id="notificationStatus" class="import-status" hidden></div>
       <div id="appVersionLabel" class="import-status" hidden></div>
       <button id="logoutButton" type="button">Çıkış yap</button>
@@ -1177,7 +1284,7 @@
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.21.02";
+    const appVersion = "2026.06.22.11";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1349,6 +1456,14 @@
       "mehmet kızıloglu": "Mobil Hizmet",
       "mehmet kızılkuyu": "Mobil Hizmet"
     };
+    const extensionOverrides = {
+      "nihan dikbas tsatsaronis": "6498",
+      "yagmur kocak": "6448",
+      "oyku sargın": "6414",
+      "efrahim sargın": "6415",
+      "emre kuluk": "6444",
+      "semih izmirli": "6428"
+    };
     const state = { day: dayForDataset(builtInDataset), shift: "morning", query: "" };
     let profileEditContext = null;
     let activeProfileSicil = null;
@@ -1394,6 +1509,8 @@
       doctorList: document.getElementById("doctorList"),
       profileView: document.getElementById("profileView"),
       notificationView: document.getElementById("notificationView"),
+      bicarbView: document.getElementById("bicarbView"),
+      bicarbBackButton: document.getElementById("bicarbBackButton"),
       notificationCenterButton: document.getElementById("notificationCenterButton"),
       notificationCount: document.getElementById("notificationCount"),
       monthSelect: document.getElementById("monthSelect"),
@@ -1402,6 +1519,15 @@
       excelDatabaseTools: document.getElementById("excelDatabaseTools"),
       excelFile: document.getElementById("excelFile"),
       excelImportButton: document.getElementById("excelImportButton"),
+      bicarbToolButton: document.getElementById("bicarbToolButton"),
+      bicarbWeight: document.getElementById("bicarbWeight"),
+      bicarbPh: document.getElementById("bicarbPh"),
+      bicarbBe: document.getElementById("bicarbBe"),
+      bicarbCurrent: document.getElementById("bicarbCurrent"),
+      bicarbTarget: document.getElementById("bicarbTarget"),
+      bicarbFluidVolume: document.getElementById("bicarbFluidVolume"),
+      bicarbDuration: document.getElementById("bicarbDuration"),
+      bicarbResult: document.getElementById("bicarbResult"),
       logoutButton: document.getElementById("logoutButton"),
       importStatus: document.getElementById("importStatus"),
       menuButton: document.getElementById("menuButton"),
@@ -1517,6 +1643,66 @@
 
     function updateAdminVisibility() {
       els.excelDatabaseTools.hidden = !isAdminUser();
+      els.bicarbToolButton.hidden = !isAdminUser();
+    }
+
+    function calculateBicarbonate() {
+      const weight = Number(els.bicarbWeight.value);
+      const ph = Number(els.bicarbPh.value);
+      const be = Number(els.bicarbBe.value);
+      const current = Number(els.bicarbCurrent.value);
+      const target = Number(els.bicarbTarget.value);
+      const fluidVolume = Number(els.bicarbFluidVolume.value);
+      const duration = Number(els.bicarbDuration.value);
+      const hasPh = els.bicarbPh.value !== "" && Number.isFinite(ph);
+      const hasBe = els.bicarbBe.value !== "" && Number.isFinite(be);
+      const hasCurrent = els.bicarbCurrent.value !== "" && Number.isFinite(current);
+      const hasTarget = els.bicarbTarget.value !== "" && Number.isFinite(target);
+      const hasDuration = els.bicarbDuration.value !== "" && duration > 0;
+      const decision = [];
+      if (hasPh && hasBe && ph >= 7.25 && be >= -6 && be <= -3) {
+        decision.push("Genelde bikarbonat verme. Sıvı, perfüzyon ve altta yatan nedeni düzelt.");
+      } else if (hasPh && hasBe && ph >= 7.15 && ph < 7.25 && be >= -10 && be < -6) {
+        decision.push("Klinik kötü, laktat yüksek, böbrek/ishal/DKA varsa değerlendir. Çoğu zaman önce sıvı ve neden tedavisi.");
+      } else if ((hasPh && ph < 7.15) || (hasBe && be <= -10) || (hasCurrent && current < 12)) {
+        decision.push("Bikarbonat hesapla. İlk etapta 1/3-1/2 doz ver; kan gazı, iCa, K, Na ve laktat takip et.");
+      } else if (hasPh || hasBe || hasCurrent) {
+        decision.push("Bikarbonat kararı klinik durum, perfüzyon, laktat ve altta yatan nedene göre değerlendirilmeli.");
+      }
+
+      if (!(weight > 0)) {
+        els.bicarbResult.innerHTML = `${decision.join("<br>") || "Kilo değerini girin."}`;
+        return;
+      }
+
+      const doseOptions = [];
+      if (hasBe && be < 0) {
+        doseOptions.push({
+          label: "BE ile",
+          dose: weight * 0.3 * Math.abs(be)
+        });
+      }
+      if (hasCurrent && hasTarget && target > current) {
+        doseOptions.push({
+          label: "HCO3 ile",
+          dose: weight * 0.3 * (target - current)
+        });
+      }
+      if (!doseOptions.length) {
+        els.bicarbResult.innerHTML = `${decision.join("<br>") || "Doz için negatif BE veya HCO3 hedef farkı girin."}`;
+        return;
+      }
+      const lines = doseOptions.map(item => {
+        const half = item.dose / 2;
+        const third = item.dose / 3;
+        const halfTotal = fluidVolume + half;
+        const thirdTotal = fluidVolume + third;
+        const rateText = hasDuration
+          ? ` 1/2 doz toplam ${halfTotal.toFixed(1)} mL -> ${duration.toFixed(2)} saatte ${ (halfTotal / duration).toFixed(1) } mL/saat. 1/3 doz toplam ${thirdTotal.toFixed(1)} mL -> ${ (thirdTotal / duration).toFixed(1) } mL/saat.`
+          : " Süre girilirse mL/saat hesaplanır.";
+        return `${item.label}: ${item.dose.toFixed(1)} mEq = ${item.dose.toFixed(1)} mL %8.4 NaHCO3<small>Başlangıç: 1/2 doz ${half.toFixed(1)} mL; 1/3 doz ${third.toFixed(1)} mL. ${fluidVolume} mL sıvı seçildi.${rateText} Sonra kan gazı ile yeniden hesapla.</small>`;
+      });
+      els.bicarbResult.innerHTML = `${decision.length ? `${decision.join("<br>")}<br>` : ""}${lines.join("<br>")}`;
     }
 
     function updateAuthStatus() {
@@ -1558,10 +1744,12 @@
       activeProfileSicil = null;
       profileEditContext = null;
       els.app.classList.remove("profile-mode", "notification-mode");
+      els.app.classList.remove("bicarb-mode");
       els.profileView.hidden = true;
       els.profileView.innerHTML = "";
       els.notificationView.hidden = true;
       els.notificationView.innerHTML = "";
+      els.bicarbView.hidden = true;
       closeDrawer();
       closeCodeMenu();
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -1627,6 +1815,15 @@
 
     function specialtyFor(name) {
       return specialtyOverrides[norm(name)] || "Genel Muayene";
+    }
+
+    function extensionFor(name) {
+      return extensionOverrides[norm(name)] || "";
+    }
+
+    function extensionMarkup(extension) {
+      if (!extension) return "";
+      return `<span class="doctor-extension" aria-label="Dahili numara">☎ ${escapeHtml(extension)}</span>`;
     }
 
     function initialsForName(name) {
@@ -1800,6 +1997,22 @@
       els.notificationPermissionPrompt.hidden = true;
     }
 
+    function openBicarbonateTool() {
+      if (!isAdminUser()) return;
+      closeProfile();
+      closeNotificationCenter();
+      closeDrawer();
+      closeCodeMenu();
+      els.bicarbView.hidden = false;
+      els.app.classList.add("bicarb-mode");
+      calculateBicarbonate();
+    }
+
+    function closeBicarbonateTool() {
+      els.app.classList.remove("bicarb-mode");
+      els.bicarbView.hidden = true;
+    }
+
     function notificationClearedAt() {
       return localStorage.getItem(notificationClearedAtStorageKey) || "";
     }
@@ -1913,6 +2126,7 @@
 
     function openNotificationCenter() {
       closeProfile();
+      closeBicarbonateTool();
       closeDrawer();
       closeCodeMenu();
       renderNotificationCenter();
@@ -2439,6 +2653,7 @@
 
     function selectDataset(id) {
       closeProfile();
+      closeBicarbonateTool();
       activeDataset = allDatasets().find(dataset => dataset.id === id) || builtInDataset;
       activeDays = buildDays(activeDataset.year, activeDataset.monthIndex, daysInMonth(activeDataset.year, activeDataset.monthIndex));
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -2502,12 +2717,13 @@
           const raw = rawForRow(sicil, schedule);
           const shift = classify(raw);
           const specialty = specialtyFor(name);
+          const extension = extensionFor(name);
           section = sectionFor(section, name);
           name = nameFor(name);
-          return { section, specialty, name, sicil, raw, shift };
+          return { section, specialty, extension, name, sicil, raw, shift };
         })
         .filter(row => rowMatchesShift(row, state.shift))
-        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.sicil}`).includes(query));
+        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.extension} ${row.sicil}`).includes(query));
     }
 
     function rowsForShift(shift, queryText = state.query) {
@@ -2517,12 +2733,13 @@
           const raw = rawForRow(sicil, schedule);
           const rowShift = classify(raw);
           const specialty = specialtyFor(name);
+          const extension = extensionFor(name);
           section = sectionFor(section, name);
           name = nameFor(name);
-          return { section, specialty, name, sicil, raw, shift: rowShift };
+          return { section, specialty, extension, name, sicil, raw, shift: rowShift };
         })
         .filter(row => rowMatchesShift(row, shift))
-        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.sicil}`).includes(query));
+        .filter(row => !query || norm(`${row.name} ${row.section} ${row.specialty} ${row.extension} ${row.sicil}`).includes(query));
     }
 
     function workingDoctorCount() {
@@ -2579,6 +2796,7 @@
       const row = profileRowForSicil(sicil);
       if (!row) return;
       closeNotificationCenter();
+      closeBicarbonateTool();
       activeProfileSicil = sicil;
       const entries = profileEntries(row);
       const stats = profileStats(entries);
@@ -2648,6 +2866,11 @@
       return shiftOrder.find(shift => rowsForShift(shift, queryText).length) || state.shift;
     }
 
+    function syncShiftWithSearchQuery() {
+      if (!state.query.trim()) return;
+      state.shift = shiftForQuery(state.query);
+    }
+
     function renderDays() {
       els.dayStrip.innerHTML = "";
       const today = todayForDataset(activeDataset);
@@ -2661,6 +2884,7 @@
         button.innerHTML = `<strong>${day.day}</strong><span>${day.short}</span>`;
         button.addEventListener("click", () => {
           state.day = day.day;
+          syncShiftWithSearchQuery();
           render();
           alignSelectedDay("smooth");
         });
@@ -2725,7 +2949,7 @@
         const readOnlyClass = canEditShifts ? "" : " readonly";
         const readOnlyAttrs = canEditShifts ? "" : " disabled";
         item.innerHTML = `
-          <span><button class="doctor-name" type="button" data-sicil="${row.sicil}"><b>${row.name}</b></button>${icapBadge}${serviceBadges}<small>${row.specialty}</small></span>
+          <span><button class="doctor-name" type="button" data-sicil="${row.sicil}"><b>${row.name}</b></button>${icapBadge}${serviceBadges}<small>${row.specialty}${extensionMarkup(row.extension)}</small></span>
           <button class="code-button ${codeClass(row.raw, row.shift)}${readOnlyClass}" type="button" data-sicil="${row.sicil}" data-name="${row.name}" data-value="${row.raw}" aria-label="${row.name} vardiya seç"${readOnlyAttrs}>
             ${displayCode(row.raw, row.shift)}
           </button>
@@ -2744,6 +2968,7 @@
     function goHome() {
       closeProfile();
       closeNotificationCenter();
+      closeBicarbonateTool();
       closeDrawer();
       closeCodeMenu();
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -2776,6 +3001,7 @@
       const nextDay = Math.min(activeDays.length, Math.max(1, state.day + delta));
       if (nextDay === state.day) return;
       state.day = nextDay;
+      syncShiftWithSearchQuery();
       render();
       alignSelectedDay("smooth");
     }
@@ -2922,6 +3148,7 @@
     });
     els.today.addEventListener("click", () => {
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
+      syncShiftWithSearchQuery();
       render();
     });
     els.prevDay.addEventListener("click", () => changeDay(-1));
@@ -2949,6 +3176,12 @@
     els.notificationPromptAllow.addEventListener("click", requestNotifications);
     els.notificationPromptDismiss.addEventListener("click", dismissNotificationPrompt);
     els.excelImportButton.addEventListener("click", importExcelFile);
+    els.bicarbToolButton.addEventListener("click", openBicarbonateTool);
+    els.bicarbBackButton.addEventListener("click", goHome);
+    [els.bicarbWeight, els.bicarbPh, els.bicarbBe, els.bicarbCurrent, els.bicarbTarget, els.bicarbFluidVolume, els.bicarbDuration].forEach(input => {
+      input.addEventListener("input", calculateBicarbonate);
+      input.addEventListener("change", calculateBicarbonate);
+    });
     els.authForm.addEventListener("submit", async event => {
       event.preventDefault();
       if (els.authScreen.classList.contains("register-mode")) {
