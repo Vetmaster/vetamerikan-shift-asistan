@@ -793,9 +793,33 @@
       display: grid;
       gap: 10px;
     }
+    .message-row {
+      display: flex;
+      align-items: end;
+      gap: 8px;
+    }
+    .message-row.mine {
+      justify-content: flex-end;
+    }
+    .message-row.mine .message-avatar {
+      order: 2;
+    }
+    .message-avatar {
+      width: 34px;
+      height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: linear-gradient(135deg, #e7f5f6, #f7fafc);
+      color: var(--brand);
+      display: grid;
+      place-items: center;
+      font-size: 12px;
+      font-weight: 900;
+      flex: 0 0 auto;
+    }
     .message-bubble {
       width: fit-content;
-      max-width: 86%;
+      max-width: calc(86% - 42px);
       padding: 10px 12px;
       border: 1px solid var(--line);
       border-radius: 14px 14px 14px 4px;
@@ -1416,7 +1440,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.07";
+    const appVersion = "2026.06.23.08";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -2295,6 +2319,11 @@
       return authUsername(value || "");
     }
 
+    function messageInitials(value) {
+      const user = messageUser(value) || "kullanici";
+      return initialsForName(user.replace(/[._-]+/g, " ")) || user.slice(0, 2).toLocaleUpperCase("tr-TR");
+    }
+
     function userForDoctor(row) {
       if (!row) return "";
       return messageUser(doctorUserOverrides[row.sicil] || "");
@@ -2465,11 +2494,14 @@
         </div>
         <div class="message-chat">
           ${messages.length ? messages.map(item => `
-            <article class="message-bubble${messageUser(item.sender || item.fromUser) === messageUser(currentUsername()) ? " mine" : ""}">
-              <p>${escapeHtml(item.body)}</p>
-              <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
-              ${messageStatusMarkup(item)}
-            </article>
+            <div class="message-row${messageUser(item.sender || item.fromUser) === messageUser(currentUsername()) ? " mine" : ""}">
+              <div class="message-avatar" aria-label="${escapeHtml(item.sender || item.fromUser || "Kullanıcı")}">${escapeHtml(messageInitials(item.sender || item.fromUser))}</div>
+              <article class="message-bubble${messageUser(item.sender || item.fromUser) === messageUser(currentUsername()) ? " mine" : ""}">
+                <p>${escapeHtml(item.body)}</p>
+                <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
+                ${messageStatusMarkup(item)}
+              </article>
+            </div>
           `).join("") : '<div class="empty">Bu hekimle henüz mesaj yok.</div>'}
         </div>
         <form id="messageComposeForm" class="message-compose">
@@ -2484,8 +2516,8 @@
         sendMessage(sicil, doctorName, resolvedPeer);
       });
       requestAnimationFrame(() => {
-        const bubbles = els.messageView.querySelectorAll(".message-bubble");
-        bubbles[bubbles.length - 1]?.scrollIntoView({ block: "end" });
+        const rows = els.messageView.querySelectorAll(".message-row");
+        rows[rows.length - 1]?.scrollIntoView({ block: "end" });
       });
     }
 
