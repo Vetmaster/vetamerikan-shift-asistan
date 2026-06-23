@@ -841,6 +841,13 @@
       outline: none;
       font: inherit;
     }
+    .message-compose-status {
+      grid-column: 1 / -1;
+      min-height: 16px;
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
     .notification-clear-button {
       justify-self: end;
       align-self: start;
@@ -1400,7 +1407,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.01";
+    const appVersion = "2026.06.23.02";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -2394,6 +2401,7 @@
         <form id="messageComposeForm" class="message-compose">
           <textarea id="messageText" placeholder="Mesaj yaz" rows="1"></textarea>
           <button class="message-send-button" type="submit">Gönder</button>
+          <div id="messageComposeStatus" class="message-compose-status"></div>
         </form>
       `;
       document.getElementById("messageBackButton").addEventListener("click", renderMessageInbox);
@@ -2426,8 +2434,9 @@
       els.messageView.innerHTML = "";
     }
 
-    function sendMessage(sicil, doctorName) {
+    async function sendMessage(sicil, doctorName) {
       const input = document.getElementById("messageText");
+      const status = document.getElementById("messageComposeStatus");
       const body = input?.value.trim() || "";
       if (!body) return;
       const item = {
@@ -2440,27 +2449,32 @@
         createdAt: new Date().toISOString()
       };
       input.value = "";
+      if (status) status.textContent = "Mesaj gönderiliyor...";
       upsertLocalMessage(item);
-      syncMessageToSupabase(item);
+      try {
+        await syncMessageToSupabase(item);
+        const refreshedStatus = document.getElementById("messageComposeStatus");
+        if (refreshedStatus) refreshedStatus.textContent = "Mesaj gönderildi.";
+      } catch (error) {
+        const refreshedStatus = document.getElementById("messageComposeStatus");
+        if (refreshedStatus) refreshedStatus.textContent = `Mesaj Supabase'e gönderilemedi: ${error.message}`;
+        showToast("Mesaj gönderilemedi", error.message);
+      }
     }
 
     async function syncMessageToSupabase(item) {
-      try {
-        await supabaseRequest(`${messageTable}?on_conflict=id`, {
-          method: "POST",
-          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
-          body: JSON.stringify({
-            id: item.id,
-            doctor_sicil: item.doctorSicil,
-            doctor_name: item.doctorName,
-            sender: item.sender,
-            body: item.body,
-            created_at: item.createdAt
-          })
-        });
-      } catch {
-        // Mesaj ekranı Supabase tablosu yoksa yerel olarak çalışır.
-      }
+      await supabaseRequest(`${messageTable}?on_conflict=id`, {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+        body: JSON.stringify({
+          id: item.id,
+          doctor_sicil: item.doctorSicil,
+          doctor_name: item.doctorName,
+          sender: item.sender,
+          body: item.body,
+          created_at: item.createdAt
+        })
+      });
     }
 
     async function loadSupabaseMessages({ silent = false } = {}) {
@@ -2689,12 +2703,16 @@
     }
 
     async function supabaseRequest(path, options = {}) {
+      const sessionResult = supabaseClient
+        ? await supabaseClient.auth.getSession().catch(() => null)
+        : null;
+      const accessToken = sessionResult?.data?.session?.access_token || supabaseKey;
       const response = await fetch(`${supabaseUrl}/rest/v1/${path}`, {
         ...options,
         cache: "no-store",
         headers: {
           apikey: supabaseKey,
-          Authorization: `Bearer ${supabaseKey}`,
+          Authorization: `Bearer ${accessToken}`,
           "Cache-Control": "no-store",
           Pragma: "no-cache",
           "Content-Type": "application/json",
