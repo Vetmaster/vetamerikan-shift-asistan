@@ -586,7 +586,12 @@
     .app.bicarb-mode .summary,
     .app.bicarb-mode .search,
     .app.bicarb-mode .day-strip,
-    .app.bicarb-mode #doctorList {
+    .app.bicarb-mode #doctorList,
+    .app.calcium-mode .shift-tabs,
+    .app.calcium-mode .summary,
+    .app.calcium-mode .search,
+    .app.calcium-mode .day-strip,
+    .app.calcium-mode #doctorList {
       display: none;
     }
     .profile-view {
@@ -642,6 +647,28 @@
       margin: 0;
       font-size: 22px;
       line-height: 1.15;
+    }
+    .tool-title {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .tool-title-icons {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tool-icon {
+      width: 22px;
+      height: 22px;
+      display: inline-grid;
+      place-items: center;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: var(--soft);
+      font-size: 13px;
+      line-height: 1;
     }
     @media (max-width: 380px) {
       .profile-photo {
@@ -1148,6 +1175,42 @@
       color: #fff;
       font-weight: 900;
     }
+    .tools-accordion {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      overflow: hidden;
+    }
+    .tools-accordion summary {
+      min-height: 46px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 10px;
+      color: var(--ink);
+      font-weight: 900;
+      cursor: pointer;
+      list-style: none;
+      user-select: none;
+    }
+    .tools-accordion summary::-webkit-details-marker {
+      display: none;
+    }
+    .tools-accordion summary::after {
+      content: "▾";
+      color: var(--muted);
+      font-size: 14px;
+      transition: transform .18s ease;
+    }
+    .tools-accordion[open] summary::after {
+      transform: rotate(180deg);
+    }
+    .tools-accordion-body {
+      display: grid;
+      gap: 8px;
+      padding: 0 10px 10px;
+    }
     .import-status {
       min-height: 18px;
       color: var(--muted);
@@ -1369,10 +1432,13 @@
       <div class="profile-head-main">
         <button id="bicarbBackButton" class="profile-back" type="button">‹ Listeye dön</button>
         <div class="profile-identity">
-          <h2 class="profile-name">Bikarbonat hesaplama</h2>
+          <h2 class="profile-name tool-title">
+            <span>İV Bikarbonat Hesaplama</span>
+            <span class="tool-title-icons" aria-hidden="true"><span class="tool-icon">🐱</span><span class="tool-icon">🐶</span></span>
+          </h2>
         </div>
       </div>
-      <div class="drawer-tool" aria-label="Bikarbonat hesaplama">
+      <div class="drawer-tool" aria-label="İV Bikarbonat Hesaplama">
         <label>
           Kilo (kg)
           <input id="bicarbWeight" type="number" inputmode="decimal" min="0" step="0.1" placeholder="Örn. 12">
@@ -1403,7 +1469,15 @@
         <div class="bicarb-timing-row">
           <label>
             Verilecek süre (saat)
-            <input id="bicarbDuration" type="number" inputmode="decimal" min="0" step="0.25" placeholder="Örn. 4">
+            <select id="bicarbDuration">
+              <option value="">Süre seç</option>
+              <option value="1">1 saat</option>
+              <option value="2">2 saat</option>
+              <option value="4">4 saat</option>
+              <option value="8">8 saat</option>
+              <option value="10">10 saat</option>
+              <option value="12">12 saat</option>
+            </select>
           </label>
           <label>
             mL/saat
@@ -1411,6 +1485,50 @@
           </label>
         </div>
         <div id="bicarbResult" class="drawer-tool-result">Eksik değerleri girin.</div>
+      </div>
+    </section>
+    <section id="calciumView" class="profile-view card" hidden>
+      <div class="profile-head-main">
+        <button id="calciumBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+        <div class="profile-identity">
+          <h2 class="profile-name tool-title">
+            <span>İV Kalsiyum Hesaplama</span>
+            <span class="tool-title-icons" aria-hidden="true"><span class="tool-icon">🐱</span><span class="tool-icon">🐶</span></span>
+          </h2>
+        </div>
+      </div>
+      <div class="drawer-tool" aria-label="İV Kalsiyum Hesaplama">
+        <label>
+          Kilo (kg)
+          <input id="calciumWeight" type="number" inputmode="decimal" min="0" step="0.1" placeholder="Örn. 12">
+        </label>
+        <label>
+          Doz seçimi
+          <select id="calciumDose">
+            <option value="0.5">Minimum doz 0.5 mL/kg</option>
+            <option value="1" selected>Orta doz 1 mL/kg</option>
+            <option value="1.5">Maksimum doz 1.5 mL/kg</option>
+          </select>
+        </label>
+        <label>
+          Sıvı hacmi
+          <select id="calciumFluidVolume">
+            <option value="10">10 mL sıvı</option>
+            <option value="20">20 mL sıvı</option>
+            <option value="25">25 mL sıvı</option>
+            <option value="50">50 mL sıvı</option>
+            <option value="75">75 mL sıvı</option>
+            <option value="100">100 mL sıvı</option>
+          </select>
+        </label>
+        <label>
+          Verilme süresi
+          <select id="calciumDuration">
+            <option value="20">20 dakika</option>
+            <option value="30" selected>30 dakika</option>
+          </select>
+        </label>
+        <div id="calciumResult" class="drawer-tool-result">Kilo değerini girin.</div>
       </div>
     </section>
   </main>
@@ -1427,7 +1545,13 @@
         <button id="excelImportButton" type="button">Excel yükle ve database oluştur</button>
         <div id="importStatus" class="import-status"></div>
       </div>
-      <button id="bicarbToolButton" class="admin-only" type="button">Bikarbonat hesaplama</button>
+      <details id="calculationToolsAccordion" class="tools-accordion admin-only">
+        <summary>Hesaplama araçları</summary>
+        <div class="tools-accordion-body">
+          <button id="bicarbToolButton" class="admin-only" type="button">İV Bikarbonat Hesaplama</button>
+          <button id="calciumToolButton" class="admin-only" type="button">İV Kalsiyum Hesaplama</button>
+        </div>
+      </details>
       <div id="notificationStatus" class="import-status" hidden></div>
       <div id="appVersionLabel" class="import-status" hidden></div>
       <button id="logoutButton" type="button">Çıkış yap</button>
@@ -1458,6 +1582,7 @@
     const appUsername = "admin";
     const authStorageKey = "vetamerikan-shift-authenticated";
     const authUserStorageKey = "vetamerikan-shift-auth-user";
+    const authUserCreatedAtStorageKey = "vetamerikan-shift-auth-user-created-at";
     const authUsersStorageKey = "vetamerikan-shift-users";
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const notificationListStorageKey = "vetamerikan-shift-notification-list";
@@ -1469,7 +1594,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.18";
+    const appVersion = "2026.06.24.10";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1707,7 +1832,9 @@
       notificationView: document.getElementById("notificationView"),
       messageView: document.getElementById("messageView"),
       bicarbView: document.getElementById("bicarbView"),
+      calciumView: document.getElementById("calciumView"),
       bicarbBackButton: document.getElementById("bicarbBackButton"),
+      calciumBackButton: document.getElementById("calciumBackButton"),
       notificationCenterButton: document.getElementById("notificationCenterButton"),
       notificationCount: document.getElementById("notificationCount"),
       messageCenterButton: document.getElementById("messageCenterButton"),
@@ -1718,7 +1845,9 @@
       excelDatabaseTools: document.getElementById("excelDatabaseTools"),
       excelFile: document.getElementById("excelFile"),
       excelImportButton: document.getElementById("excelImportButton"),
+      calculationToolsAccordion: document.getElementById("calculationToolsAccordion"),
       bicarbToolButton: document.getElementById("bicarbToolButton"),
+      calciumToolButton: document.getElementById("calciumToolButton"),
       bicarbWeight: document.getElementById("bicarbWeight"),
       bicarbPh: document.getElementById("bicarbPh"),
       bicarbBe: document.getElementById("bicarbBe"),
@@ -1728,6 +1857,11 @@
       bicarbDuration: document.getElementById("bicarbDuration"),
       bicarbRate: document.getElementById("bicarbRate"),
       bicarbResult: document.getElementById("bicarbResult"),
+      calciumWeight: document.getElementById("calciumWeight"),
+      calciumDose: document.getElementById("calciumDose"),
+      calciumFluidVolume: document.getElementById("calciumFluidVolume"),
+      calciumDuration: document.getElementById("calciumDuration"),
+      calciumResult: document.getElementById("calciumResult"),
       logoutButton: document.getElementById("logoutButton"),
       importStatus: document.getElementById("importStatus"),
       menuButton: document.getElementById("menuButton"),
@@ -1777,7 +1911,7 @@
         lastAuthError = error.message;
         return false;
       }
-      saveAuth(data.user?.user_metadata?.username || usernameFromAuthEmail(data.user?.email) || username);
+      saveAuth(data.user?.user_metadata?.username || usernameFromAuthEmail(data.user?.email) || username, data.user?.created_at);
       return true;
     }
 
@@ -1795,7 +1929,7 @@
         if (!signedIn) throw new Error(lastAuthError || "Kayıt oluşturuldu ama oturum açılamadı.");
         return;
       }
-      saveAuth(data.user?.user_metadata?.username || username);
+      saveAuth(data.user?.user_metadata?.username || username, data.user?.created_at);
     }
 
     async function migrateLegacyUser(username, password) {
@@ -1814,9 +1948,10 @@
       return false;
     }
 
-    function saveAuth(username) {
+    function saveAuth(username, createdAt = "") {
       localStorage.setItem(authStorageKey, "1");
       localStorage.setItem(authUserStorageKey, authUsername(username));
+      if (createdAt) localStorage.setItem(authUserCreatedAtStorageKey, createdAt);
       sessionStorage.removeItem(authStorageKey);
       sessionStorage.removeItem(authUserStorageKey);
     }
@@ -1824,12 +1959,17 @@
     function clearAuth() {
       localStorage.removeItem(authStorageKey);
       localStorage.removeItem(authUserStorageKey);
+      localStorage.removeItem(authUserCreatedAtStorageKey);
       sessionStorage.removeItem(authStorageKey);
       sessionStorage.removeItem(authUserStorageKey);
     }
 
     function currentUsername() {
       return localStorage.getItem(authUserStorageKey) || "";
+    }
+
+    function currentUserCreatedAt() {
+      return localStorage.getItem(authUserCreatedAtStorageKey) || "";
     }
 
     function isAdminUser() {
@@ -1851,7 +1991,9 @@
 
     function updateAdminVisibility() {
       els.excelDatabaseTools.hidden = !isAdminUser();
+      els.calculationToolsAccordion.hidden = !isAdminUser();
       els.bicarbToolButton.hidden = !isAdminUser();
+      els.calciumToolButton.hidden = !isAdminUser();
     }
 
     function numberFromInput(input) {
@@ -1879,7 +2021,17 @@
       if (bicarbTimingMode === "duration" && duration > 0) {
         els.bicarbRate.value = (fluidVolume / duration).toFixed(1);
       } else if (bicarbTimingMode === "rate" && rate > 0) {
-        els.bicarbDuration.value = (fluidVolume / rate).toFixed(2).replace(/\.00$/, "");
+        const targetDuration = fluidVolume / rate;
+        const options = Array.from(els.bicarbDuration.options)
+          .map(option => Number(option.value))
+          .filter(value => value > 0);
+        const nearest = options.reduce((best, value) => (
+          Math.abs(value - targetDuration) < Math.abs(best - targetDuration) ? value : best
+        ), options[0]);
+        if (nearest) {
+          els.bicarbDuration.value = String(nearest);
+          els.bicarbRate.value = (fluidVolume / nearest).toFixed(1);
+        }
       }
     }
 
@@ -1989,6 +2141,7 @@
       profileEditContext = null;
       els.app.classList.remove("profile-mode", "notification-mode", "message-mode");
       els.app.classList.remove("bicarb-mode");
+      els.app.classList.remove("calcium-mode");
       els.profileView.hidden = true;
       els.profileView.innerHTML = "";
       els.notificationView.hidden = true;
@@ -1996,6 +2149,7 @@
       els.messageView.hidden = true;
       els.messageView.innerHTML = "";
       els.bicarbView.hidden = true;
+      els.calciumView.hidden = true;
       closeDrawer();
       closeCodeMenu();
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -2034,7 +2188,7 @@
         const { data } = await supabaseClient.auth.getSession();
         const user = data.session?.user;
         if (user) {
-          saveAuth(user.user_metadata?.username || usernameFromAuthEmail(user.email));
+          saveAuth(user.user_metadata?.username || usernameFromAuthEmail(user.email), user.created_at);
           unlockApp();
           return;
         }
@@ -2248,6 +2402,7 @@
       closeProfile();
       closeNotificationCenter();
       closeMessageCenter();
+      closeCalciumTool();
       closeDrawer();
       closeCodeMenu();
       els.bicarbView.hidden = false;
@@ -2260,8 +2415,53 @@
       els.bicarbView.hidden = true;
     }
 
+    function calculateCalcium() {
+      const weight = numberFromInput(els.calciumWeight);
+      if (!(weight > 0)) {
+        els.calciumResult.innerHTML = "Kilo değerini girin.";
+        return;
+      }
+      const dosePerKg = Number(els.calciumDose.value);
+      const fluidVolume = Number(els.calciumFluidVolume.value);
+      const durationMinutes = Number(els.calciumDuration.value);
+      const dose = weight * dosePerKg;
+      const rate = fluidVolume / (durationMinutes / 60);
+      const removeVolume = Math.min(dose, fluidVolume);
+      const doseLabel = dosePerKg === 0.5 ? "Minimum doz" : dosePerKg === 1.5 ? "Maksimum doz" : "Orta doz";
+      els.calciumResult.innerHTML = `
+        ${doseLabel}: ${dose.toFixed(1)} mL %10 kalsiyum glukonat IV.
+        <small>Hesap: ${weight.toFixed(1)} kg × ${dosePerKg} mL/kg. BSAVA acil doz aralığı 0.5-1.5 mL/kg.</small>
+        <small>Serumun içinden eklenecek kalsiyum hacmi kadar sıvı çıkar: ${removeVolume.toFixed(1)} mL.</small>
+        <small>${fluidVolume} mL sıvı ${durationMinutes} dakikada verilecek: yaklaşık ${rate.toFixed(1)} mL/saat.</small>
+      `;
+    }
+
+    function openCalciumTool() {
+      if (!isAdminUser()) return;
+      closeProfile();
+      closeNotificationCenter();
+      closeMessageCenter();
+      closeBicarbonateTool();
+      closeDrawer();
+      closeCodeMenu();
+      els.calciumView.hidden = false;
+      els.app.classList.add("calcium-mode");
+      calculateCalcium();
+    }
+
+    function closeCalciumTool() {
+      els.app.classList.remove("calcium-mode");
+      els.calciumView.hidden = true;
+    }
+
     function notificationClearedAt() {
-      return localStorage.getItem(notificationClearedAtStorageKey) || "";
+      const clearedAt = localStorage.getItem(notificationClearedAtStorageKey) || "";
+      const createdAt = currentUserCreatedAt();
+      const timestamps = [clearedAt, createdAt]
+        .map(value => new Date(value || 0).getTime())
+        .filter(value => !Number.isNaN(value) && value > 0);
+      if (!timestamps.length) return "";
+      return new Date(Math.max(...timestamps)).toISOString();
     }
 
     function isNotificationAfterClear(item) {
@@ -2595,6 +2795,7 @@
       closeProfile();
       closeNotificationCenter();
       closeBicarbonateTool();
+      closeCalciumTool();
       closeDrawer();
       closeCodeMenu();
       els.messageView.hidden = false;
@@ -2749,6 +2950,7 @@
       closeProfile();
       closeMessageCenter();
       closeBicarbonateTool();
+      closeCalciumTool();
       closeDrawer();
       closeCodeMenu();
       renderNotificationCenter();
@@ -3435,6 +3637,7 @@
       closeNotificationCenter();
       closeMessageCenter();
       closeBicarbonateTool();
+      closeCalciumTool();
       activeProfileSicil = sicil;
       const entries = profileEntries(row);
       const stats = profileStats(entries);
@@ -3499,6 +3702,7 @@
       closeNotificationCenter();
       closeMessageCenter();
       closeBicarbonateTool();
+      closeCalciumTool();
       activeProfileSicil = null;
       els.profileView.innerHTML = `
         <div class="profile-head">
@@ -3642,6 +3846,7 @@
       closeNotificationCenter();
       closeMessageCenter();
       closeBicarbonateTool();
+      closeCalciumTool();
       closeDrawer();
       closeCodeMenu();
       state.day = Math.min(dayForDataset(activeDataset), activeDays.length);
@@ -3850,7 +4055,9 @@
     els.notificationPromptDismiss.addEventListener("click", dismissNotificationPrompt);
     els.excelImportButton.addEventListener("click", importExcelFile);
     els.bicarbToolButton.addEventListener("click", openBicarbonateTool);
+    els.calciumToolButton.addEventListener("click", openCalciumTool);
     els.bicarbBackButton.addEventListener("click", goHome);
+    els.calciumBackButton.addEventListener("click", goHome);
     els.bicarbBe.addEventListener("input", normalizeBicarbonateBaseInput);
     els.bicarbDuration.addEventListener("input", () => { bicarbTimingMode = "duration"; });
     els.bicarbDuration.addEventListener("change", () => { bicarbTimingMode = "duration"; });
@@ -3859,6 +4066,12 @@
     [els.bicarbWeight, els.bicarbPh, els.bicarbBe, els.bicarbCurrent, els.bicarbTarget, els.bicarbFluidVolume, els.bicarbDuration, els.bicarbRate].forEach(input => {
       input.addEventListener("input", calculateBicarbonate);
       input.addEventListener("change", calculateBicarbonate);
+    });
+    els.calciumWeight.addEventListener("input", calculateCalcium);
+    els.calciumWeight.addEventListener("change", calculateCalcium);
+    [els.calciumDose, els.calciumFluidVolume, els.calciumDuration].forEach(input => {
+      input.addEventListener("input", calculateCalcium);
+      input.addEventListener("change", calculateCalcium);
     });
     els.authForm.addEventListener("submit", async event => {
       event.preventDefault();
