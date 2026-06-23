@@ -1594,10 +1594,11 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.10";
+    const appVersion = "2026.06.24.11";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
+    let isApplyingHistoryState = false;
     const shiftInfo = {
       morning: { label: "Sabah", rule: "S veya gündüz saatleri", className: "morning" },
       evening: { label: "Akşam", rule: "A veya akşam saatleri", className: "evening" },
@@ -1996,6 +1997,62 @@
       els.calciumToolButton.hidden = !isAdminUser();
     }
 
+    function appHistoryState(screen = "home", params = {}) {
+      return { vetamerikanShiftApp: true, screen, params };
+    }
+
+    function pushAppHistory(screen, params = {}) {
+      if (isApplyingHistoryState || !window.history?.pushState) return;
+      window.history.pushState(appHistoryState(screen, params), "", window.location.href);
+    }
+
+    function replaceAppHistory(screen = "home", params = {}) {
+      if (!window.history?.replaceState) return;
+      window.history.replaceState(appHistoryState(screen, params), "", window.location.href);
+    }
+
+    function closeAppScreens() {
+      closeProfile();
+      closeNotificationCenter();
+      closeMessageCenter();
+      closeBicarbonateTool();
+      closeCalciumTool();
+      closeDrawer();
+      closeCodeMenu();
+    }
+
+    function goBackOrClose(fallback) {
+      if (window.history?.state?.vetamerikanShiftApp && window.history.state.screen !== "home") {
+        window.history.back();
+      } else {
+        fallback();
+      }
+    }
+
+    function applyAppHistoryState(historyState) {
+      const target = historyState?.vetamerikanShiftApp ? historyState : appHistoryState("home");
+      isApplyingHistoryState = true;
+      closeAppScreens();
+      if (target.screen === "profile" && target.params?.sicil) {
+        openProfile(target.params.sicil, { pushHistory: false });
+      } else if (target.screen === "admin-profile") {
+        openAdminProfile({ pushHistory: false });
+      } else if (target.screen === "notifications") {
+        openNotificationCenter({ pushHistory: false });
+      } else if (target.screen === "messages") {
+        openMessageCenter("", { pushHistory: false });
+      } else if (target.screen === "message-thread" && target.params?.sicil) {
+        openMessageCenter(target.params.sicil, { pushHistory: false, peer: target.params.peer || "" });
+      } else if (target.screen === "bicarb") {
+        openBicarbonateTool({ pushHistory: false });
+      } else if (target.screen === "calcium") {
+        openCalciumTool({ pushHistory: false });
+      } else {
+        render();
+      }
+      isApplyingHistoryState = false;
+    }
+
     function numberFromInput(input) {
       return Number(String(input.value).replace(",", "."));
     }
@@ -2160,6 +2217,7 @@
 
     function unlockApp() {
       resetToHomeView();
+      replaceAppHistory("home");
       document.body.classList.remove("locked");
       updateUserBadge();
       updateAdminVisibility();
@@ -2172,6 +2230,7 @@
 
     async function lockApp() {
       resetToHomeView();
+      replaceAppHistory("home");
       if (supabaseClient) await supabaseClient.auth.signOut();
       clearAuth();
       updateUserBadge();
@@ -2397,8 +2456,9 @@
       els.notificationPermissionPrompt.hidden = true;
     }
 
-    function openBicarbonateTool() {
+    function openBicarbonateTool(options = {}) {
       if (!isAdminUser()) return;
+      if (options.pushHistory !== false) pushAppHistory("bicarb");
       closeProfile();
       closeNotificationCenter();
       closeMessageCenter();
@@ -2436,8 +2496,9 @@
       `;
     }
 
-    function openCalciumTool() {
+    function openCalciumTool(options = {}) {
       if (!isAdminUser()) return;
+      if (options.pushHistory !== false) pushAppHistory("calcium");
       closeProfile();
       closeNotificationCenter();
       closeMessageCenter();
@@ -2736,15 +2797,16 @@
           `).join("") : '<div class="empty">Henüz mesaj yok.</div>'}
         </div>
       `;
-      document.getElementById("messageBackButton").addEventListener("click", closeMessageCenter);
+      document.getElementById("messageBackButton").addEventListener("click", () => goBackOrClose(closeMessageCenter));
       els.messageView.querySelectorAll("[data-message-sicil]").forEach(button => {
         button.addEventListener("click", () => renderMessageThread(button.dataset.messageSicil, button.dataset.messagePeer));
       });
     }
 
-    function renderMessageThread(sicil, peer = "") {
+    function renderMessageThread(sicil, peer = "", options = {}) {
       const row = profileRowForSicil(sicil);
       const resolvedPeer = messageUser(peer || messagePeerForProfile(row));
+      if (options.pushHistory !== false) pushAppHistory("message-thread", { sicil: String(sicil), peer: resolvedPeer });
       const messages = messagesForConversation(sicil, resolvedPeer);
       const doctorName = row?.name || messages[0]?.doctorName || "Hekim";
       activeMessageSicil = String(sicil);
@@ -2780,7 +2842,10 @@
           <div id="messageComposeStatus" class="message-compose-status"></div>
         </form>
       `;
-      document.getElementById("messageBackButton").addEventListener("click", renderMessageInbox);
+      document.getElementById("messageBackButton").addEventListener("click", () => {
+        replaceAppHistory("messages");
+        renderMessageInbox();
+      });
       document.getElementById("messageComposeForm").addEventListener("submit", event => {
         event.preventDefault();
         sendMessage(sicil, doctorName, resolvedPeer);
@@ -2791,7 +2856,10 @@
       });
     }
 
-    function openMessageCenter(sicil = "") {
+    function openMessageCenter(sicil = "", options = {}) {
+      if (options.pushHistory !== false) {
+        pushAppHistory(sicil ? "message-thread" : "messages", sicil ? { sicil: String(sicil), peer: options.peer || "" } : {});
+      }
       closeProfile();
       closeNotificationCenter();
       closeBicarbonateTool();
@@ -2800,7 +2868,7 @@
       closeCodeMenu();
       els.messageView.hidden = false;
       els.app.classList.add("message-mode");
-      if (sicil) renderMessageThread(sicil);
+      if (sicil) renderMessageThread(sicil, options.peer || "", { pushHistory: false });
       else renderMessageInbox();
       loadSupabaseMessages({ silent: false });
     }
@@ -2935,7 +3003,7 @@
           `).join("") : '<div class="empty">Henüz bildirim yok.</div>'}
         </div>
       `;
-      document.getElementById("notificationBackButton").addEventListener("click", closeNotificationCenter);
+      document.getElementById("notificationBackButton").addEventListener("click", () => goBackOrClose(closeNotificationCenter));
       document.getElementById("notificationClearButton").addEventListener("click", clearNotifications);
     }
 
@@ -2946,7 +3014,8 @@
       renderNotificationCenter();
     }
 
-    function openNotificationCenter() {
+    function openNotificationCenter(options = {}) {
+      if (options.pushHistory !== false) pushAppHistory("notifications");
       closeProfile();
       closeMessageCenter();
       closeBicarbonateTool();
@@ -3137,7 +3206,7 @@
     function refreshAfterRemoteChange() {
       const profileSicil = activeProfileSicil;
       render();
-      if (profileSicil) openProfile(profileSicil);
+      if (profileSicil) openProfile(profileSicil, { pushHistory: false });
     }
 
     async function loadSupabaseOverrides({ replace = false, syncLocal = true, silent = false } = {}) {
@@ -3631,9 +3700,10 @@
       return date.toLocaleDateString("tr-TR", { weekday: "long", month: "long" });
     }
 
-    function openProfile(sicil) {
+    function openProfile(sicil, options = {}) {
       const row = profileRowForSicil(sicil);
       if (!row) return;
+      if (options.pushHistory !== false) pushAppHistory("profile", { sicil: String(sicil) });
       closeNotificationCenter();
       closeMessageCenter();
       closeBicarbonateTool();
@@ -3682,7 +3752,7 @@
       `;
       els.profileView.hidden = false;
       els.app.classList.add("profile-mode");
-      document.getElementById("profileBackButton").addEventListener("click", closeProfile);
+      document.getElementById("profileBackButton").addEventListener("click", () => goBackOrClose(closeProfile));
       document.getElementById("profileMessageButton").addEventListener("click", () => openMessageCenter(row.sicil));
       els.profileView.querySelectorAll("[data-profile-code]").forEach(button => {
         button.addEventListener("click", () => {
@@ -3698,7 +3768,8 @@
       });
     }
 
-    function openAdminProfile() {
+    function openAdminProfile(options = {}) {
+      if (options.pushHistory !== false) pushAppHistory("admin-profile");
       closeNotificationCenter();
       closeMessageCenter();
       closeBicarbonateTool();
@@ -3726,7 +3797,7 @@
       `;
       els.profileView.hidden = false;
       els.app.classList.add("profile-mode");
-      document.getElementById("profileBackButton").addEventListener("click", closeProfile);
+      document.getElementById("profileBackButton").addEventListener("click", () => goBackOrClose(closeProfile));
     }
 
     function closeProfile() {
@@ -3889,7 +3960,7 @@
       profileEditContext = null;
       render();
       if (context?.sicil) {
-        openProfile(context.sicil);
+        openProfile(context.sicil, { pushHistory: false });
         state.day = context.previousDay;
         requestAnimationFrame(() => {
           const edited = els.profileView.querySelector(`[data-profile-code][data-day="${context.editedDay}"]`);
@@ -4018,6 +4089,10 @@
         selectShiftFromEvent(event);
       }, { passive: false });
     });
+    replaceAppHistory("home");
+    window.addEventListener("popstate", event => {
+      applyAppHistoryState(event.state);
+    });
     els.search.addEventListener("input", () => {
       state.query = els.search.value;
       state.shift = shiftForQuery(state.query);
@@ -4056,8 +4131,8 @@
     els.excelImportButton.addEventListener("click", importExcelFile);
     els.bicarbToolButton.addEventListener("click", openBicarbonateTool);
     els.calciumToolButton.addEventListener("click", openCalciumTool);
-    els.bicarbBackButton.addEventListener("click", goHome);
-    els.calciumBackButton.addEventListener("click", goHome);
+    els.bicarbBackButton.addEventListener("click", () => goBackOrClose(goHome));
+    els.calciumBackButton.addEventListener("click", () => goBackOrClose(goHome));
     els.bicarbBe.addEventListener("input", normalizeBicarbonateBaseInput);
     els.bicarbDuration.addEventListener("input", () => { bicarbTimingMode = "duration"; });
     els.bicarbDuration.addEventListener("change", () => { bicarbTimingMode = "duration"; });
