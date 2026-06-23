@@ -1594,7 +1594,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.11";
+    const appVersion = "2026.06.24.13";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1793,6 +1793,7 @@
     let lastMessageSyncText = "";
     let activeMessageSicil = null;
     let activeMessagePeer = "";
+    let activeMessageReturnScreen = "";
     let bicarbTimingMode = "duration";
     let hasLoadedRemoteOverrides = false;
     let suppressAddonNotifications = false;
@@ -2042,7 +2043,7 @@
       } else if (target.screen === "messages") {
         openMessageCenter("", { pushHistory: false });
       } else if (target.screen === "message-thread" && target.params?.sicil) {
-        openMessageCenter(target.params.sicil, { pushHistory: false, peer: target.params.peer || "" });
+        openMessageCenter(target.params.sicil, { pushHistory: false, peer: target.params.peer || "", fromProfile: target.params.from === "profile" });
       } else if (target.screen === "bicarb") {
         openBicarbonateTool({ pushHistory: false });
       } else if (target.screen === "calcium") {
@@ -2195,6 +2196,7 @@
       activeProfileSicil = null;
       activeMessageSicil = null;
       activeMessagePeer = "";
+      activeMessageReturnScreen = "";
       profileEditContext = null;
       els.app.classList.remove("profile-mode", "notification-mode", "message-mode");
       els.app.classList.remove("bicarb-mode");
@@ -2775,6 +2777,7 @@
     function renderMessageInbox() {
       activeMessageSicil = null;
       activeMessagePeer = "";
+      activeMessageReturnScreen = "";
       const threads = messageThreads();
       els.messageView.innerHTML = `
         <div class="profile-head-main">
@@ -2806,15 +2809,18 @@
     function renderMessageThread(sicil, peer = "", options = {}) {
       const row = profileRowForSicil(sicil);
       const resolvedPeer = messageUser(peer || messagePeerForProfile(row));
-      if (options.pushHistory !== false) pushAppHistory("message-thread", { sicil: String(sicil), peer: resolvedPeer });
+      const returnScreen = options.fromProfile || activeMessageReturnScreen === "profile" ? "profile" : "";
+      activeMessageReturnScreen = returnScreen;
+      if (options.pushHistory !== false) pushAppHistory("message-thread", { sicil: String(sicil), peer: resolvedPeer, from: returnScreen });
       const messages = messagesForConversation(sicil, resolvedPeer);
       const doctorName = row?.name || messages[0]?.doctorName || "Hekim";
       activeMessageSicil = String(sicil);
       activeMessagePeer = resolvedPeer;
       markThreadRead(sicil, resolvedPeer);
+      const backLabel = activeMessageReturnScreen === "profile" ? "‹ Geri" : "‹ Mesajlara dön";
       els.messageView.innerHTML = `
         <div class="profile-head-main">
-          <button id="messageBackButton" class="profile-back" type="button">‹ Mesajlara dön</button>
+          <button id="messageBackButton" class="profile-back" type="button">${backLabel}</button>
           <div class="profile-identity">
             <h2 class="profile-name">${escapeHtml(doctorName)}</h2>
             <div class="profile-meta">
@@ -2843,6 +2849,12 @@
         </form>
       `;
       document.getElementById("messageBackButton").addEventListener("click", () => {
+        if (activeMessageReturnScreen === "profile") {
+          replaceAppHistory("profile", { sicil: String(sicil) });
+          closeMessageCenter();
+          openProfile(sicil, { pushHistory: false });
+          return;
+        }
         replaceAppHistory("messages");
         renderMessageInbox();
       });
@@ -2857,8 +2869,10 @@
     }
 
     function openMessageCenter(sicil = "", options = {}) {
+      const previousState = window.history?.state;
+      const fromProfile = Boolean(options.fromProfile || previousState?.screen === "profile");
       if (options.pushHistory !== false) {
-        pushAppHistory(sicil ? "message-thread" : "messages", sicil ? { sicil: String(sicil), peer: options.peer || "" } : {});
+        pushAppHistory(sicil ? "message-thread" : "messages", sicil ? { sicil: String(sicil), peer: options.peer || "", from: fromProfile ? "profile" : "" } : {});
       }
       closeProfile();
       closeNotificationCenter();
@@ -2868,7 +2882,8 @@
       closeCodeMenu();
       els.messageView.hidden = false;
       els.app.classList.add("message-mode");
-      if (sicil) renderMessageThread(sicil, options.peer || "", { pushHistory: false });
+      activeMessageReturnScreen = fromProfile ? "profile" : "";
+      if (sicil) renderMessageThread(sicil, options.peer || "", { pushHistory: false, fromProfile });
       else renderMessageInbox();
       loadSupabaseMessages({ silent: false });
     }
@@ -2876,6 +2891,7 @@
     function closeMessageCenter() {
       activeMessageSicil = null;
       activeMessagePeer = "";
+      activeMessageReturnScreen = "";
       els.app.classList.remove("message-mode");
       els.messageView.hidden = true;
       els.messageView.innerHTML = "";
