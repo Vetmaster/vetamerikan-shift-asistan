@@ -7,6 +7,9 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
   <title>Vetamerikan Shift Asistan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Anta&family=Roboto:wght@400;500;700;900&display=swap" rel="stylesheet">
   <style>
     :root {
       --ink: #14213d;
@@ -23,12 +26,13 @@
       --off: #8a4fff;
       --soft: #e8f5f5;
       --shadow: 0 10px 26px rgba(20, 33, 61, .09);
+      --font: "Roboto", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--font);
       color: var(--ink);
       background: var(--paper);
       letter-spacing: 0;
@@ -231,16 +235,32 @@
       background: transparent;
       color: var(--ink);
       padding: 0;
-      font-family: Arial, Helvetica, "Segoe UI", sans-serif;
-      font-size: 19px;
-      font-weight: 900;
-      line-height: 1.1;
+      font-family: var(--font);
       letter-spacing: 0;
       text-align: left;
       cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .app-logo {
+      width: min(218px, 58vw);
+      height: auto;
+      display: block;
+      flex: 0 1 auto;
+      object-fit: contain;
+    }
+    .app-title-text {
+      color: var(--ink);
+      font-family: "Anta", var(--font);
+      font-size: 17px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
     }
     .auth-card h1 {
-      font-family: Arial, Helvetica, "Segoe UI", sans-serif;
+      font-family: var(--font);
       font-weight: 900;
       letter-spacing: 0;
     }
@@ -654,20 +674,22 @@
       gap: 8px;
       flex-wrap: wrap;
     }
-    .tool-title-icons {
+    .tool-title-tags {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
-    .tool-icon {
-      width: 22px;
-      height: 22px;
-      display: inline-grid;
-      place-items: center;
-      border: 1px solid var(--line);
+    .tool-title-tag {
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      border: 1px solid rgba(15, 108, 116, .22);
       border-radius: 999px;
       background: var(--soft);
-      font-size: 13px;
+      color: var(--brand);
+      padding: 0 8px;
+      font-size: 11px;
+      font-weight: 900;
       line-height: 1;
     }
     @media (max-width: 380px) {
@@ -1368,7 +1390,12 @@
   <main id="app" class="app">
     <header class="top">
       <div class="brand">
-        <h1><button id="homeButton" class="app-title" type="button">VETAMERİKAN SHIFT ASİSTAN</button></h1>
+        <h1>
+          <button id="homeButton" class="app-title" type="button" aria-label="Vetamerikan Shift Asistan ana sayfa">
+            <img class="app-logo" src="vetamerikan-logo.png" alt="Vetamerikan">
+            <span class="app-title-text">SHIFT ASİSTAN</span>
+          </button>
+        </h1>
         <div class="brand-actions">
           <select id="monthSelect" class="month-select" aria-label="Ay seç"></select>
           <button id="userBadge" class="user-badge" type="button" aria-label="Profil"></button>
@@ -1434,7 +1461,10 @@
         <div class="profile-identity">
           <h2 class="profile-name tool-title">
             <span>İV Bikarbonat Hesaplama</span>
-            <span class="tool-title-icons" aria-hidden="true"><span class="tool-icon">🐱</span><span class="tool-icon">🐶</span></span>
+            <span class="tool-title-tags" aria-hidden="true">
+              <span class="tool-title-tag">Kedi</span>
+              <span class="tool-title-tag">Köpek</span>
+            </span>
           </h2>
         </div>
       </div>
@@ -1493,7 +1523,10 @@
         <div class="profile-identity">
           <h2 class="profile-name tool-title">
             <span>İV Kalsiyum Hesaplama</span>
-            <span class="tool-title-icons" aria-hidden="true"><span class="tool-icon">🐱</span><span class="tool-icon">🐶</span></span>
+            <span class="tool-title-tags" aria-hidden="true">
+              <span class="tool-title-tag">Kedi</span>
+              <span class="tool-title-tag">Köpek</span>
+            </span>
           </h2>
         </div>
       </div>
@@ -1594,7 +1627,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.14";
+    const appVersion = "2026.06.24.24";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
