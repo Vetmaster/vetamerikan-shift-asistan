@@ -259,6 +259,16 @@
       line-height: 1;
       white-space: nowrap;
     }
+    .app-title-version {
+      align-self: flex-end;
+      margin-bottom: 1px;
+      color: var(--muted);
+      font-family: var(--font);
+      font-size: 10px;
+      font-weight: 800;
+      line-height: 1;
+      white-space: nowrap;
+    }
     .auth-card h1 {
       font-family: var(--font);
       font-weight: 900;
@@ -1394,6 +1404,7 @@
           <button id="homeButton" class="app-title" type="button" aria-label="Vetamerikan Shift Asistan ana sayfa">
             <img class="app-logo" src="vetamerikan-logo.png" alt="Vetamerikan">
             <span class="app-title-text">SHIFT ASİSTAN</span>
+            <span id="headerVersionLabel" class="app-title-version"></span>
           </button>
         </h1>
         <div class="brand-actions">
@@ -1627,7 +1638,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.24";
+    const appVersion = "2026.06.24.25";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1875,6 +1886,7 @@
       messageCenterButton: document.getElementById("messageCenterButton"),
       messageCount: document.getElementById("messageCount"),
       monthSelect: document.getElementById("monthSelect"),
+      headerVersionLabel: document.getElementById("headerVersionLabel"),
       notificationStatus: document.getElementById("notificationStatus"),
       appVersionLabel: document.getElementById("appVersionLabel"),
       excelDatabaseTools: document.getElementById("excelDatabaseTools"),
@@ -3393,6 +3405,7 @@
     }
 
     function renderAppVersion() {
+      els.headerVersionLabel.textContent = `v${appVersion}`;
       els.appVersionLabel.textContent = `Sürüm ${appVersion}`;
     }
 
