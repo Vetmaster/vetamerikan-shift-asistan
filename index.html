@@ -563,6 +563,11 @@
     .app.notification-mode .search,
     .app.notification-mode .day-strip,
     .app.notification-mode #doctorList,
+    .app.message-mode .shift-tabs,
+    .app.message-mode .summary,
+    .app.message-mode .search,
+    .app.message-mode .day-strip,
+    .app.message-mode #doctorList,
     .app.bicarb-mode .shift-tabs,
     .app.bicarb-mode .summary,
     .app.bicarb-mode .search,
@@ -642,6 +647,21 @@
       display: flex;
       flex-wrap: wrap;
       gap: 8px;
+    }
+    .profile-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .profile-message-button,
+    .message-send-button {
+      min-height: 38px;
+      border: 1px solid var(--brand);
+      border-radius: 8px;
+      background: var(--brand);
+      color: #fff;
+      padding: 0 12px;
+      font-weight: 900;
     }
     .profile-days {
       display: grid;
@@ -742,9 +762,84 @@
     .notification-count[hidden] {
       display: none;
     }
+    .message-thread-list,
     .notification-list {
       display: grid;
       gap: 10px;
+    }
+    .message-thread-button {
+      width: 100%;
+      min-height: 54px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--ink);
+      padding: 10px 12px;
+      display: grid;
+      gap: 3px;
+      text-align: left;
+      font-weight: 900;
+    }
+    .message-thread-button small {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .message-thread-button.unread {
+      border-color: rgba(15, 108, 116, .34);
+      background: var(--soft);
+    }
+    .message-chat {
+      display: grid;
+      gap: 10px;
+    }
+    .message-bubble {
+      width: fit-content;
+      max-width: 86%;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 14px 14px 14px 4px;
+      background: #fff;
+      display: grid;
+      gap: 4px;
+    }
+    .message-bubble.mine {
+      justify-self: end;
+      border-color: rgba(15, 108, 116, .28);
+      border-radius: 14px 14px 4px 14px;
+      background: var(--soft);
+    }
+    .message-bubble p {
+      margin: 0;
+      font-size: 13px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+    }
+    .message-bubble small {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 800;
+    }
+    .message-compose {
+      position: sticky;
+      bottom: 0;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 8px;
+      padding-top: 8px;
+      background: var(--panel);
+    }
+    .message-compose textarea {
+      min-height: 44px;
+      max-height: 120px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fbfcfe;
+      color: var(--ink);
+      padding: 10px 12px;
+      resize: vertical;
+      outline: none;
+      font: inherit;
     }
     .notification-clear-button {
       justify-self: end;
@@ -1153,6 +1248,12 @@
             </svg>
             <span id="notificationCount" class="notification-count" hidden>0</span>
           </button>
+          <button id="messageCenterButton" class="notification-icon-button" type="button" aria-label="Mesajlar">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+            </svg>
+            <span id="messageCount" class="notification-count" hidden>0</span>
+          </button>
           <button id="menuButton" class="menu-button" type="button" aria-label="Menü">☰</button>
         </div>
       </div>
@@ -1194,6 +1295,7 @@
     <section id="doctorList" class="card"></section>
     <section id="profileView" class="profile-view card" hidden></section>
     <section id="notificationView" class="profile-view card" hidden></section>
+    <section id="messageView" class="profile-view card" hidden></section>
     <section id="bicarbView" class="profile-view card" hidden>
       <div class="profile-head-main">
         <button id="bicarbBackButton" class="profile-back" type="button">‹ Listeye dön</button>
@@ -1291,12 +1393,14 @@
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const notificationListStorageKey = "vetamerikan-shift-notification-list";
     const notificationClearedAtStorageKey = "vetamerikan-shift-notifications-cleared-at";
+    const messageListStorageKey = "vetamerikan-shift-message-list";
     const supabaseUrl = "https://hmbqrccjuiknlqdzoltx.supabase.co";
     const supabaseKey = "sb_publishable_j3mX4HXc2IL8D3Up8t5JBw_vDc2BBkX";
     const supabaseTable = "shift_overrides";
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
-    const appVersion = "2026.06.22.17";
+    const messageTable = "shift_messages";
+    const appVersion = "2026.06.23.01";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1470,6 +1574,7 @@
     };
     const extensionOverrides = {
       "nihan dikbas tsatsaronis": "6498",
+      "burak gumurcunler": "6471",
       "yagmur kocak": "6448",
       "oyku sargın": "6414",
       "efrahim sargın": "6415",
@@ -1481,9 +1586,12 @@
     let activeProfileSicil = null;
     let supabaseRealtimeChannel = null;
     let supabaseNotificationChannel = null;
+    let supabaseMessageChannel = null;
     let supabasePollTimer = null;
     let lastRemoteFingerprint = "";
     let lastNotificationFingerprint = "";
+    let lastMessageFingerprint = "";
+    let activeMessageSicil = null;
     let bicarbTimingMode = "duration";
     let hasLoadedRemoteOverrides = false;
     let suppressAddonNotifications = false;
@@ -1522,10 +1630,13 @@
       doctorList: document.getElementById("doctorList"),
       profileView: document.getElementById("profileView"),
       notificationView: document.getElementById("notificationView"),
+      messageView: document.getElementById("messageView"),
       bicarbView: document.getElementById("bicarbView"),
       bicarbBackButton: document.getElementById("bicarbBackButton"),
       notificationCenterButton: document.getElementById("notificationCenterButton"),
       notificationCount: document.getElementById("notificationCount"),
+      messageCenterButton: document.getElementById("messageCenterButton"),
+      messageCount: document.getElementById("messageCount"),
       monthSelect: document.getElementById("monthSelect"),
       notificationStatus: document.getElementById("notificationStatus"),
       appVersionLabel: document.getElementById("appVersionLabel"),
@@ -1790,13 +1901,16 @@
 
     function resetToHomeView() {
       activeProfileSicil = null;
+      activeMessageSicil = null;
       profileEditContext = null;
-      els.app.classList.remove("profile-mode", "notification-mode");
+      els.app.classList.remove("profile-mode", "notification-mode", "message-mode");
       els.app.classList.remove("bicarb-mode");
       els.profileView.hidden = true;
       els.profileView.innerHTML = "";
       els.notificationView.hidden = true;
       els.notificationView.innerHTML = "";
+      els.messageView.hidden = true;
+      els.messageView.innerHTML = "";
       els.bicarbView.hidden = true;
       closeDrawer();
       closeCodeMenu();
@@ -2049,6 +2163,7 @@
       if (!isAdminUser()) return;
       closeProfile();
       closeNotificationCenter();
+      closeMessageCenter();
       closeDrawer();
       closeCodeMenu();
       els.bicarbView.hidden = false;
@@ -2137,6 +2252,245 @@
       return date.toLocaleString("tr-TR", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" });
     }
 
+    function savedMessages() {
+      try {
+        return JSON.parse(localStorage.getItem(messageListStorageKey) || "[]");
+      } catch {
+        return [];
+      }
+    }
+
+    function saveMessages(items) {
+      localStorage.setItem(messageListStorageKey, JSON.stringify(items.slice(0, 300)));
+    }
+
+    function messageTimeLabel(createdAt) {
+      return notificationTimeLabel(createdAt);
+    }
+
+    function unreadMessageCount() {
+      const username = currentUsername();
+      if (!username) return 0;
+      return savedMessages().filter(item => !item.read && item.sender !== username).length;
+    }
+
+    function renderMessageBadge() {
+      const count = unreadMessageCount();
+      els.messageCount.hidden = count < 1;
+      els.messageCount.textContent = count > 99 ? "99+" : String(count);
+    }
+
+    function upsertLocalMessage(message) {
+      const items = savedMessages();
+      const index = items.findIndex(item => item.id === message.id);
+      if (index >= 0) {
+        items[index] = { ...items[index], ...message };
+      } else {
+        items.unshift(message);
+      }
+      items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      saveMessages(items);
+      renderMessageBadge();
+      if (!els.messageView.hidden) {
+        if (activeMessageSicil) renderMessageThread(activeMessageSicil);
+        else renderMessageInbox();
+      }
+    }
+
+    function messageFromRecord(record) {
+      const local = savedMessages().find(item => item.id === String(record.id));
+      return {
+        id: String(record.id),
+        doctorSicil: String(record.doctor_sicil || ""),
+        doctorName: record.doctor_name || "Hekim",
+        sender: record.sender || "",
+        body: record.body || "",
+        read: local?.read || record.sender === currentUsername(),
+        createdAt: record.created_at || new Date().toISOString()
+      };
+    }
+
+    function messagesForSicil(sicil) {
+      return savedMessages()
+        .filter(item => item.doctorSicil === String(sicil))
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    }
+
+    function messageThreads() {
+      const map = new Map();
+      savedMessages().forEach(item => {
+        const key = item.doctorSicil || "genel";
+        const previous = map.get(key);
+        if (!previous || new Date(item.createdAt) > new Date(previous.createdAt)) map.set(key, item);
+      });
+      return Array.from(map.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }
+
+    function markThreadRead(sicil) {
+      const username = currentUsername();
+      const items = savedMessages().map(item => (
+        item.doctorSicil === String(sicil) && item.sender !== username
+          ? { ...item, read: true }
+          : item
+      ));
+      saveMessages(items);
+      renderMessageBadge();
+    }
+
+    function renderMessageInbox() {
+      activeMessageSicil = null;
+      const threads = messageThreads();
+      els.messageView.innerHTML = `
+        <div class="profile-head-main">
+          <button id="messageBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+          <div class="profile-identity">
+            <h2 class="profile-name">Mesajlar</h2>
+            <div class="profile-meta">
+              <span class="tag">${threads.length} konuşma</span>
+              <span class="tag">${unreadMessageCount()} okunmamış</span>
+            </div>
+          </div>
+        </div>
+        <div class="message-thread-list">
+          ${threads.length ? threads.map(item => `
+            <button class="message-thread-button${item.read || item.sender === currentUsername() ? "" : " unread"}" type="button" data-message-sicil="${escapeHtml(item.doctorSicil)}">
+              <span>${escapeHtml(item.doctorName)}</span>
+              <small>${escapeHtml(item.sender || "Kullanıcı")}: ${escapeHtml(item.body).slice(0, 80)}</small>
+            </button>
+          `).join("") : '<div class="empty">Henüz mesaj yok.</div>'}
+        </div>
+      `;
+      document.getElementById("messageBackButton").addEventListener("click", closeMessageCenter);
+      els.messageView.querySelectorAll("[data-message-sicil]").forEach(button => {
+        button.addEventListener("click", () => renderMessageThread(button.dataset.messageSicil));
+      });
+    }
+
+    function renderMessageThread(sicil) {
+      const row = profileRowForSicil(sicil);
+      const messages = messagesForSicil(sicil);
+      const doctorName = row?.name || messages[0]?.doctorName || "Hekim";
+      activeMessageSicil = String(sicil);
+      markThreadRead(sicil);
+      els.messageView.innerHTML = `
+        <div class="profile-head-main">
+          <button id="messageBackButton" class="profile-back" type="button">‹ Mesajlara dön</button>
+          <div class="profile-identity">
+            <h2 class="profile-name">${escapeHtml(doctorName)}</h2>
+            <div class="profile-meta">
+              <span class="tag">Mesaj</span>
+              <span class="tag">${messages.length} kayıt</span>
+            </div>
+          </div>
+        </div>
+        <div class="message-chat">
+          ${messages.length ? messages.map(item => `
+            <article class="message-bubble${item.sender === currentUsername() ? " mine" : ""}">
+              <p>${escapeHtml(item.body)}</p>
+              <small>${escapeHtml(item.sender || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
+            </article>
+          `).join("") : '<div class="empty">Bu hekimle henüz mesaj yok.</div>'}
+        </div>
+        <form id="messageComposeForm" class="message-compose">
+          <textarea id="messageText" placeholder="Mesaj yaz" rows="1"></textarea>
+          <button class="message-send-button" type="submit">Gönder</button>
+        </form>
+      `;
+      document.getElementById("messageBackButton").addEventListener("click", renderMessageInbox);
+      document.getElementById("messageComposeForm").addEventListener("submit", event => {
+        event.preventDefault();
+        sendMessage(sicil, doctorName);
+      });
+      requestAnimationFrame(() => {
+        const bubbles = els.messageView.querySelectorAll(".message-bubble");
+        bubbles[bubbles.length - 1]?.scrollIntoView({ block: "end" });
+      });
+    }
+
+    function openMessageCenter(sicil = "") {
+      closeProfile();
+      closeNotificationCenter();
+      closeBicarbonateTool();
+      closeDrawer();
+      closeCodeMenu();
+      els.messageView.hidden = false;
+      els.app.classList.add("message-mode");
+      if (sicil) renderMessageThread(sicil);
+      else renderMessageInbox();
+    }
+
+    function closeMessageCenter() {
+      activeMessageSicil = null;
+      els.app.classList.remove("message-mode");
+      els.messageView.hidden = true;
+      els.messageView.innerHTML = "";
+    }
+
+    function sendMessage(sicil, doctorName) {
+      const input = document.getElementById("messageText");
+      const body = input?.value.trim() || "";
+      if (!body) return;
+      const item = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+        doctorSicil: String(sicil),
+        doctorName,
+        sender: currentUsername() || "kullanici",
+        body,
+        read: true,
+        createdAt: new Date().toISOString()
+      };
+      input.value = "";
+      upsertLocalMessage(item);
+      syncMessageToSupabase(item);
+    }
+
+    async function syncMessageToSupabase(item) {
+      try {
+        await supabaseRequest(`${messageTable}?on_conflict=id`, {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify({
+            id: item.id,
+            doctor_sicil: item.doctorSicil,
+            doctor_name: item.doctorName,
+            sender: item.sender,
+            body: item.body,
+            created_at: item.createdAt
+          })
+        });
+      } catch {
+        // Mesaj ekranı Supabase tablosu yoksa yerel olarak çalışır.
+      }
+    }
+
+    async function loadSupabaseMessages({ silent = false } = {}) {
+      try {
+        const records = await supabaseRequest(`${messageTable}?select=id,doctor_sicil,doctor_name,sender,body,created_at&order=created_at.desc&limit=300`);
+        if (!Array.isArray(records)) return;
+        const fingerprint = JSON.stringify(records.map(record => [record.id, record.doctor_sicil, record.sender, record.body, record.created_at]));
+        if (fingerprint === lastMessageFingerprint && silent) return;
+        lastMessageFingerprint = fingerprint;
+        const localReadState = new Map(savedMessages().map(item => [item.id, item.read]));
+        const remoteMessages = records.map(record => {
+          const message = messageFromRecord(record);
+          return { ...message, read: localReadState.get(message.id) || message.read };
+        });
+        saveMessages(remoteMessages);
+        renderMessageBadge();
+        if (!els.messageView.hidden) {
+          if (activeMessageSicil) renderMessageThread(activeMessageSicil);
+          else renderMessageInbox();
+        }
+      } catch {
+        if (!silent) renderMessageBadge();
+      }
+    }
+
+    function handleSupabaseMessage(payload) {
+      if (payload.eventType !== "INSERT" || !payload.new?.id) return;
+      upsertLocalMessage(messageFromRecord(payload.new));
+    }
+
     function renderNotificationCenter() {
       const items = savedNotifications();
       els.notificationView.innerHTML = `
@@ -2174,6 +2528,7 @@
 
     function openNotificationCenter() {
       closeProfile();
+      closeMessageCenter();
       closeBicarbonateTool();
       closeDrawer();
       closeCodeMenu();
@@ -2461,6 +2816,14 @@
         .subscribe(status => {
           if (status === "CHANNEL_ERROR") els.notificationStatus.textContent = "Bildirim realtime bağlantısı kurulamadı.";
         });
+      supabaseMessageChannel = supabaseClient
+        .channel("shift-messages-realtime")
+        .on("postgres_changes", {
+          event: "INSERT",
+          schema: "public",
+          table: messageTable
+        }, handleSupabaseMessage)
+        .subscribe();
     }
 
     function startSupabasePollingFallback() {
@@ -2468,6 +2831,7 @@
       const poll = async () => {
         await loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
         await loadSupabaseNotifications({ silent: true });
+        await loadSupabaseMessages({ silent: true });
         supabasePollTimer = window.setTimeout(poll, document.hidden ? 5000 : 1500);
       };
       supabasePollTimer = window.setTimeout(poll, 1500);
@@ -2476,11 +2840,13 @@
     function syncWhenAppBecomesActive() {
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
       loadSupabaseNotifications({ silent: true });
+      loadSupabaseMessages({ silent: true });
     }
 
     function forceSupabaseRefresh() {
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: false });
       loadSupabaseNotifications({ silent: false });
+      loadSupabaseMessages({ silent: false });
     }
 
     function renderAppVersion() {
@@ -2844,6 +3210,7 @@
       const row = profileRowForSicil(sicil);
       if (!row) return;
       closeNotificationCenter();
+      closeMessageCenter();
       closeBicarbonateTool();
       activeProfileSicil = sicil;
       const entries = profileEntries(row);
@@ -2871,6 +3238,9 @@
                 <span class="tag">İcap ${stats.icap}</span>
                 <span class="tag">İzinli ${stats.off}</span>
               </div>
+              <div class="profile-actions">
+                <button id="profileMessageButton" class="profile-message-button" type="button">Mesaj</button>
+              </div>
             </div>
           </div>
           <div class="profile-photo" aria-label="Profil fotoğrafı">${initials}</div>
@@ -2887,6 +3257,7 @@
       els.profileView.hidden = false;
       els.app.classList.add("profile-mode");
       document.getElementById("profileBackButton").addEventListener("click", closeProfile);
+      document.getElementById("profileMessageButton").addEventListener("click", () => openMessageCenter(row.sicil));
       els.profileView.querySelectorAll("[data-profile-code]").forEach(button => {
         button.addEventListener("click", () => {
           if (!isAdminUser()) return;
@@ -3016,6 +3387,7 @@
     function goHome() {
       closeProfile();
       closeNotificationCenter();
+      closeMessageCenter();
       closeBicarbonateTool();
       closeDrawer();
       closeCodeMenu();
@@ -3262,6 +3634,7 @@
     });
     els.homeButton.addEventListener("click", goHome);
     els.notificationCenterButton.addEventListener("click", openNotificationCenter);
+    els.messageCenterButton.addEventListener("click", () => openMessageCenter());
     els.menuButton.addEventListener("click", openDrawer);
     els.drawerClose.addEventListener("click", closeDrawer);
     els.drawerBackdrop.addEventListener("click", closeDrawer);
@@ -3280,12 +3653,14 @@
     renderDatasetSelect();
     renderAppVersion();
     renderNotificationBadge();
+    renderMessageBadge();
     updateNotificationStatus();
     render();
     initAuth();
     loadSupabaseDatasets({ silent: true });
     loadSupabaseOverrides({ replace: true, syncLocal: false });
     loadSupabaseNotifications({ silent: false });
+    loadSupabaseMessages({ silent: false });
     startSupabaseRealtime();
     startSupabasePollingFallback();
   </script>
