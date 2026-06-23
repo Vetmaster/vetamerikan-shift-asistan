@@ -1407,7 +1407,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.04";
+    const appVersion = "2026.06.23.05";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1753,7 +1753,7 @@
 
     function saveAuth(username) {
       localStorage.setItem(authStorageKey, "1");
-      localStorage.setItem(authUserStorageKey, username);
+      localStorage.setItem(authUserStorageKey, authUsername(username));
       sessionStorage.removeItem(authStorageKey);
       sessionStorage.removeItem(authUserStorageKey);
     }
@@ -2281,36 +2281,42 @@
       return notificationTimeLabel(createdAt);
     }
 
+    function messageUser(value) {
+      return authUsername(value || "");
+    }
+
     function userForDoctor(row) {
       if (!row) return "";
-      return doctorUserOverrides[row.sicil] || "";
+      return messageUser(doctorUserOverrides[row.sicil] || "");
     }
 
     function messagePeerForProfile(row) {
       const doctorUser = userForDoctor(row);
-      const username = currentUsername();
+      const username = messageUser(currentUsername());
       if (doctorUser && username === doctorUser) return appUsername;
       return doctorUser || appUsername;
     }
 
     function messageInvolvesCurrentUser(item) {
-      const username = currentUsername();
+      const username = messageUser(currentUsername());
       if (!username) return false;
       if (!item.fromUser && !item.toUser) return true;
-      return item.fromUser === username || item.toUser === username;
+      return messageUser(item.fromUser) === username || messageUser(item.toUser) === username;
     }
 
     function messagePeer(item) {
-      const username = currentUsername();
-      if (item.fromUser === username) return item.toUser || "";
-      if (item.toUser === username) return item.fromUser || "";
-      return item.toUser || item.fromUser || "";
+      const username = messageUser(currentUsername());
+      const fromUser = messageUser(item.fromUser);
+      const toUser = messageUser(item.toUser);
+      if (fromUser === username) return toUser || "";
+      if (toUser === username) return fromUser || "";
+      return toUser || fromUser || "";
     }
 
     function unreadMessageCount() {
-      const username = currentUsername();
+      const username = messageUser(currentUsername());
       if (!username) return 0;
-      return savedMessages().filter(item => !item.read && item.toUser === username).length;
+      return savedMessages().filter(item => !item.read && messageUser(item.toUser) === username).length;
     }
 
     function renderMessageBadge() {
@@ -2342,11 +2348,11 @@
         id: String(record.id),
         doctorSicil: String(record.doctor_sicil || ""),
         doctorName: record.doctor_name || "Hekim",
-        sender: record.sender || "",
-        fromUser: record.from_user || record.sender || "",
-        toUser: record.to_user || "",
+        sender: messageUser(record.sender || record.from_user || ""),
+        fromUser: messageUser(record.from_user || record.sender || ""),
+        toUser: messageUser(record.to_user || ""),
         body: record.body || "",
-        read: local?.read || record.from_user === currentUsername() || record.sender === currentUsername(),
+        read: local?.read || messageUser(record.from_user || record.sender) === messageUser(currentUsername()),
         createdAt: record.created_at || new Date().toISOString()
       };
     }
@@ -2371,9 +2377,10 @@
     }
 
     function markThreadRead(sicil, peer) {
-      const username = currentUsername();
+      const username = messageUser(currentUsername());
+      const normalizedPeer = messageUser(peer);
       const items = savedMessages().map(item => (
-        item.doctorSicil === String(sicil) && messagePeer(item) === peer && item.toUser === username
+        item.doctorSicil === String(sicil) && messagePeer(item) === normalizedPeer && messageUser(item.toUser) === username
           ? { ...item, read: true }
           : item
       ));
@@ -2399,7 +2406,7 @@
         </div>
         <div class="message-thread-list">
           ${threads.length ? threads.map(item => `
-            <button class="message-thread-button${item.read || item.toUser !== currentUsername() ? "" : " unread"}" type="button" data-message-sicil="${escapeHtml(item.doctorSicil)}" data-message-peer="${escapeHtml(item.peer || messagePeer(item))}">
+            <button class="message-thread-button${item.read || messageUser(item.toUser) !== messageUser(currentUsername()) ? "" : " unread"}" type="button" data-message-sicil="${escapeHtml(item.doctorSicil)}" data-message-peer="${escapeHtml(item.peer || messagePeer(item))}">
               <span>${escapeHtml(item.doctorName)}</span>
               <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} → ${escapeHtml(item.toUser || "Kullanıcı")}: ${escapeHtml(item.body).slice(0, 80)}</small>
             </button>
@@ -2414,7 +2421,7 @@
 
     function renderMessageThread(sicil, peer = "") {
       const row = profileRowForSicil(sicil);
-      const resolvedPeer = peer || messagePeerForProfile(row);
+      const resolvedPeer = messageUser(peer || messagePeerForProfile(row));
       const messages = messagesForConversation(sicil, resolvedPeer);
       const doctorName = row?.name || messages[0]?.doctorName || "Hekim";
       activeMessageSicil = String(sicil);
@@ -2483,14 +2490,15 @@
       const status = document.getElementById("messageComposeStatus");
       const body = input?.value.trim() || "";
       if (!body) return;
-      const fromUser = currentUsername() || "kullanici";
+      const fromUser = messageUser(currentUsername()) || "kullanici";
+      const recipient = messageUser(toUser) || appUsername;
       const item = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         doctorSicil: String(sicil),
         doctorName,
         sender: fromUser,
         fromUser,
-        toUser,
+        toUser: recipient,
         body,
         read: true,
         createdAt: new Date().toISOString()
