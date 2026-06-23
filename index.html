@@ -177,6 +177,7 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
+      gap: 5px;
       padding: 0 8px;
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -187,6 +188,19 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    .user-badge svg {
+      width: 15px;
+      height: 15px;
+      stroke: currentColor;
+      stroke-width: 2.3;
+      fill: none;
+      flex: 0 0 auto;
+    }
+    .user-badge span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     @media (max-width: 430px) {
       .brand-actions {
@@ -653,14 +667,24 @@
       flex-wrap: wrap;
       gap: 8px;
     }
-    .profile-message-button,
     .message-send-button {
       min-height: 38px;
-      border: 1px solid var(--brand);
+      border: 1px solid var(--line);
       border-radius: 8px;
-      background: var(--brand);
-      color: #fff;
+      background: linear-gradient(135deg, #e7f5f6, #f7fafc);
+      color: var(--brand);
       padding: 0 12px;
+      font-weight: 900;
+    }
+    .profile-message-button {
+      min-width: 92px;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e7f5f6, #f7fafc);
+      color: var(--brand);
+      padding: 0 16px;
+      font-size: 12px;
       font-weight: 900;
     }
     .profile-days {
@@ -742,6 +766,10 @@
       stroke: currentColor;
       stroke-width: 2.3;
       fill: none;
+    }
+    .notification-icon-button.message-icon svg {
+      width: 24px;
+      height: 24px;
     }
     .notification-count {
       position: absolute;
@@ -1280,7 +1308,7 @@
         <h1><button id="homeButton" class="app-title" type="button">VETAMERİKAN SHIFT ASİSTAN</button></h1>
         <div class="brand-actions">
           <select id="monthSelect" class="month-select" aria-label="Ay seç"></select>
-          <span id="userBadge" class="user-badge"></span>
+          <button id="userBadge" class="user-badge" type="button" aria-label="Profil"></button>
           <button id="notificationCenterButton" class="notification-icon-button" type="button" aria-label="Bildirimler">
             <svg viewBox="0 0 24 24" aria-hidden="true">
               <path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
@@ -1288,9 +1316,10 @@
             </svg>
             <span id="notificationCount" class="notification-count" hidden>0</span>
           </button>
-          <button id="messageCenterButton" class="notification-icon-button" type="button" aria-label="Mesajlar">
+          <button id="messageCenterButton" class="notification-icon-button message-icon" type="button" aria-label="Mesajlar">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M21 15a4 4 0 0 1-4 4H8l-5 3V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4z"></path>
+              <path d="M4 6h16v12H4z"></path>
+              <path d="m4 7 8 6 8-6"></path>
             </svg>
             <span id="messageCount" class="notification-count" hidden>0</span>
           </button>
@@ -1440,7 +1469,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.11";
+    const appVersion = "2026.06.23.18";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1808,7 +1837,15 @@
     }
 
     function updateUserBadge() {
-      els.userBadge.textContent = currentUsername() || "";
+      const username = currentUsername() || "";
+      els.userBadge.innerHTML = `
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M20 21a8 8 0 0 0-16 0"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>${escapeHtml(username)}</span>
+      `;
+      els.userBadge.title = username ? `${username} profili` : "Profil";
       els.drawerUserTitle.textContent = currentUsername() || "Kullanıcı";
     }
 
@@ -2339,6 +2376,27 @@
     function userForDoctor(row) {
       if (!row) return "";
       return messageUser(doctorUserOverrides[row.sicil] || "");
+    }
+
+    function profileSicilForUser(username) {
+      const normalizedUser = messageUser(username);
+      const match = Object.entries(doctorUserOverrides)
+        .find(([, user]) => messageUser(user) === normalizedUser);
+      if (match) return match[0];
+      return "";
+    }
+
+    function openCurrentUserProfile() {
+      if (messageUser(currentUsername()) === appUsername) {
+        openAdminProfile();
+        return;
+      }
+      const sicil = profileSicilForUser(currentUsername());
+      if (sicil) {
+        openProfile(sicil);
+        return;
+      }
+      showToast("Profil bulunamadı", "Bu kullanıcı için eşleşmiş hekim profili yok.");
     }
 
     function messagePeerForProfile(row) {
@@ -3437,6 +3495,36 @@
       });
     }
 
+    function openAdminProfile() {
+      closeNotificationCenter();
+      closeMessageCenter();
+      closeBicarbonateTool();
+      activeProfileSicil = null;
+      els.profileView.innerHTML = `
+        <div class="profile-head">
+          <div class="profile-head-main">
+            <button id="profileBackButton" class="profile-back" type="button">‹ Listeye dön</button>
+            <div class="profile-identity">
+              <h2 class="profile-name">Admin</h2>
+              <div class="profile-meta">
+                <span class="tag">Yönetici</span>
+                <span class="tag">Vetamerikan Shift Asistan</span>
+              </div>
+              <div class="profile-stats">
+                <span class="tag">Sistem yönetimi</span>
+                <span class="tag">Database ve vardiya düzenleme</span>
+              </div>
+            </div>
+          </div>
+          <div class="profile-photo" aria-label="Profil fotoğrafı">AD</div>
+        </div>
+        <div class="empty">Bu kullanıcı bir hekim profiline bağlı değil.</div>
+      `;
+      els.profileView.hidden = false;
+      els.app.classList.add("profile-mode");
+      document.getElementById("profileBackButton").addEventListener("click", closeProfile);
+    }
+
     function closeProfile() {
       activeProfileSicil = null;
       els.app.classList.remove("profile-mode");
@@ -3798,6 +3886,7 @@
       selectDataset(els.monthSelect.value);
     });
     els.homeButton.addEventListener("click", goHome);
+    els.userBadge.addEventListener("click", openCurrentUserProfile);
     els.notificationCenterButton.addEventListener("click", openNotificationCenter);
     els.messageCenterButton.addEventListener("click", () => openMessageCenter());
     els.menuButton.addEventListener("click", openDrawer);
