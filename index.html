@@ -1440,7 +1440,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.08";
+    const appVersion = "2026.06.23.11";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -2319,9 +2319,21 @@
       return authUsername(value || "");
     }
 
+    function doctorNameForUser(username) {
+      const normalizedUser = messageUser(username);
+      const sicil = Object.entries(doctorUserOverrides)
+        .find(([, user]) => messageUser(user) === normalizedUser)?.[0];
+      const row = sicil ? profileRowForSicil(sicil) : null;
+      return row?.name || "";
+    }
+
     function messageInitials(value) {
       const user = messageUser(value) || "kullanici";
-      return initialsForName(user.replace(/[._-]+/g, " ")) || user.slice(0, 2).toLocaleUpperCase("tr-TR");
+      const doctorName = doctorNameForUser(user);
+      if (doctorName) return initialsForName(doctorName);
+      const parts = user.replace(/[._-]+/g, " ").split(/\s+/).filter(Boolean);
+      if (parts.length > 1) return parts.slice(0, 2).map(part => part[0]).join("").toLocaleUpperCase("tr-TR");
+      return user.slice(0, 2).toLocaleUpperCase("tr-TR");
     }
 
     function userForDoctor(row) {
@@ -2361,7 +2373,7 @@
     function messageStatusMarkup(item) {
       if (messageUser(item.fromUser || item.sender) !== messageUser(currentUsername())) return "";
       const isRead = Boolean(item.readAt);
-      return `<span class="message-status${isRead ? " read" : ""}">${isRead ? "✓✓ Okundu" : "✓ İletildi"}</span>`;
+      return `<span class="message-status${isRead ? " read" : ""}">${isRead ? "✓✓" : "✓"}</span>`;
     }
 
     function renderMessageBadge() {
