@@ -1407,7 +1407,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.02";
+    const appVersion = "2026.06.23.04";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1588,6 +1588,9 @@
       "emre kuluk": "6444",
       "semih izmirli": "6428"
     };
+    const doctorUserOverrides = {
+      "60420": "hasansar"
+    };
     const state = { day: dayForDataset(builtInDataset), shift: "morning", query: "" };
     let profileEditContext = null;
     let activeProfileSicil = null;
@@ -1598,7 +1601,9 @@
     let lastRemoteFingerprint = "";
     let lastNotificationFingerprint = "";
     let lastMessageFingerprint = "";
+    let lastMessageSyncText = "";
     let activeMessageSicil = null;
+    let activeMessagePeer = "";
     let bicarbTimingMode = "duration";
     let hasLoadedRemoteOverrides = false;
     let suppressAddonNotifications = false;
@@ -1909,6 +1914,7 @@
     function resetToHomeView() {
       activeProfileSicil = null;
       activeMessageSicil = null;
+      activeMessagePeer = "";
       profileEditContext = null;
       els.app.classList.remove("profile-mode", "notification-mode", "message-mode");
       els.app.classList.remove("bicarb-mode");
@@ -2275,10 +2281,36 @@
       return notificationTimeLabel(createdAt);
     }
 
+    function userForDoctor(row) {
+      if (!row) return "";
+      return doctorUserOverrides[row.sicil] || "";
+    }
+
+    function messagePeerForProfile(row) {
+      const doctorUser = userForDoctor(row);
+      const username = currentUsername();
+      if (doctorUser && username === doctorUser) return appUsername;
+      return doctorUser || appUsername;
+    }
+
+    function messageInvolvesCurrentUser(item) {
+      const username = currentUsername();
+      if (!username) return false;
+      if (!item.fromUser && !item.toUser) return true;
+      return item.fromUser === username || item.toUser === username;
+    }
+
+    function messagePeer(item) {
+      const username = currentUsername();
+      if (item.fromUser === username) return item.toUser || "";
+      if (item.toUser === username) return item.fromUser || "";
+      return item.toUser || item.fromUser || "";
+    }
+
     function unreadMessageCount() {
       const username = currentUsername();
       if (!username) return 0;
-      return savedMessages().filter(item => !item.read && item.sender !== username).length;
+      return savedMessages().filter(item => !item.read && item.toUser === username).length;
     }
 
     function renderMessageBadge() {
@@ -2299,7 +2331,7 @@
       saveMessages(items);
       renderMessageBadge();
       if (!els.messageView.hidden) {
-        if (activeMessageSicil) renderMessageThread(activeMessageSicil);
+        if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
         else renderMessageInbox();
       }
     }
@@ -2311,32 +2343,37 @@
         doctorSicil: String(record.doctor_sicil || ""),
         doctorName: record.doctor_name || "Hekim",
         sender: record.sender || "",
+        fromUser: record.from_user || record.sender || "",
+        toUser: record.to_user || "",
         body: record.body || "",
-        read: local?.read || record.sender === currentUsername(),
+        read: local?.read || record.from_user === currentUsername() || record.sender === currentUsername(),
         createdAt: record.created_at || new Date().toISOString()
       };
     }
 
-    function messagesForSicil(sicil) {
+    function messagesForConversation(sicil, peer) {
       return savedMessages()
         .filter(item => item.doctorSicil === String(sicil))
+        .filter(messageInvolvesCurrentUser)
+        .filter(item => messagePeer(item) === peer)
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     }
 
     function messageThreads() {
       const map = new Map();
-      savedMessages().forEach(item => {
-        const key = item.doctorSicil || "genel";
+      savedMessages().filter(messageInvolvesCurrentUser).forEach(item => {
+        const peer = messagePeer(item);
+        const key = `${item.doctorSicil || "genel"}::${peer}`;
         const previous = map.get(key);
-        if (!previous || new Date(item.createdAt) > new Date(previous.createdAt)) map.set(key, item);
+        if (!previous || new Date(item.createdAt) > new Date(previous.createdAt)) map.set(key, { ...item, peer });
       });
       return Array.from(map.values()).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }
 
-    function markThreadRead(sicil) {
+    function markThreadRead(sicil, peer) {
       const username = currentUsername();
       const items = savedMessages().map(item => (
-        item.doctorSicil === String(sicil) && item.sender !== username
+        item.doctorSicil === String(sicil) && messagePeer(item) === peer && item.toUser === username
           ? { ...item, read: true }
           : item
       ));
@@ -2346,6 +2383,7 @@
 
     function renderMessageInbox() {
       activeMessageSicil = null;
+      activeMessagePeer = "";
       const threads = messageThreads();
       els.messageView.innerHTML = `
         <div class="profile-head-main">
@@ -2356,45 +2394,49 @@
               <span class="tag">${threads.length} konuşma</span>
               <span class="tag">${unreadMessageCount()} okunmamış</span>
             </div>
+            ${lastMessageSyncText ? `<div class="message-compose-status">${escapeHtml(lastMessageSyncText)}</div>` : ""}
           </div>
         </div>
         <div class="message-thread-list">
           ${threads.length ? threads.map(item => `
-            <button class="message-thread-button${item.read || item.sender === currentUsername() ? "" : " unread"}" type="button" data-message-sicil="${escapeHtml(item.doctorSicil)}">
+            <button class="message-thread-button${item.read || item.toUser !== currentUsername() ? "" : " unread"}" type="button" data-message-sicil="${escapeHtml(item.doctorSicil)}" data-message-peer="${escapeHtml(item.peer || messagePeer(item))}">
               <span>${escapeHtml(item.doctorName)}</span>
-              <small>${escapeHtml(item.sender || "Kullanıcı")}: ${escapeHtml(item.body).slice(0, 80)}</small>
+              <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} → ${escapeHtml(item.toUser || "Kullanıcı")}: ${escapeHtml(item.body).slice(0, 80)}</small>
             </button>
           `).join("") : '<div class="empty">Henüz mesaj yok.</div>'}
         </div>
       `;
       document.getElementById("messageBackButton").addEventListener("click", closeMessageCenter);
       els.messageView.querySelectorAll("[data-message-sicil]").forEach(button => {
-        button.addEventListener("click", () => renderMessageThread(button.dataset.messageSicil));
+        button.addEventListener("click", () => renderMessageThread(button.dataset.messageSicil, button.dataset.messagePeer));
       });
     }
 
-    function renderMessageThread(sicil) {
+    function renderMessageThread(sicil, peer = "") {
       const row = profileRowForSicil(sicil);
-      const messages = messagesForSicil(sicil);
+      const resolvedPeer = peer || messagePeerForProfile(row);
+      const messages = messagesForConversation(sicil, resolvedPeer);
       const doctorName = row?.name || messages[0]?.doctorName || "Hekim";
       activeMessageSicil = String(sicil);
-      markThreadRead(sicil);
+      activeMessagePeer = resolvedPeer;
+      markThreadRead(sicil, resolvedPeer);
       els.messageView.innerHTML = `
         <div class="profile-head-main">
           <button id="messageBackButton" class="profile-back" type="button">‹ Mesajlara dön</button>
           <div class="profile-identity">
             <h2 class="profile-name">${escapeHtml(doctorName)}</h2>
             <div class="profile-meta">
-              <span class="tag">Mesaj</span>
+              <span class="tag">${escapeHtml(currentUsername())} ↔ ${escapeHtml(resolvedPeer)}</span>
               <span class="tag">${messages.length} kayıt</span>
             </div>
+            ${lastMessageSyncText ? `<div class="message-compose-status">${escapeHtml(lastMessageSyncText)}</div>` : ""}
           </div>
         </div>
         <div class="message-chat">
           ${messages.length ? messages.map(item => `
             <article class="message-bubble${item.sender === currentUsername() ? " mine" : ""}">
               <p>${escapeHtml(item.body)}</p>
-              <small>${escapeHtml(item.sender || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
+              <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
             </article>
           `).join("") : '<div class="empty">Bu hekimle henüz mesaj yok.</div>'}
         </div>
@@ -2407,7 +2449,7 @@
       document.getElementById("messageBackButton").addEventListener("click", renderMessageInbox);
       document.getElementById("messageComposeForm").addEventListener("submit", event => {
         event.preventDefault();
-        sendMessage(sicil, doctorName);
+        sendMessage(sicil, doctorName, resolvedPeer);
       });
       requestAnimationFrame(() => {
         const bubbles = els.messageView.querySelectorAll(".message-bubble");
@@ -2425,25 +2467,30 @@
       els.app.classList.add("message-mode");
       if (sicil) renderMessageThread(sicil);
       else renderMessageInbox();
+      loadSupabaseMessages({ silent: false });
     }
 
     function closeMessageCenter() {
       activeMessageSicil = null;
+      activeMessagePeer = "";
       els.app.classList.remove("message-mode");
       els.messageView.hidden = true;
       els.messageView.innerHTML = "";
     }
 
-    async function sendMessage(sicil, doctorName) {
+    async function sendMessage(sicil, doctorName, toUser) {
       const input = document.getElementById("messageText");
       const status = document.getElementById("messageComposeStatus");
       const body = input?.value.trim() || "";
       if (!body) return;
+      const fromUser = currentUsername() || "kullanici";
       const item = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
         doctorSicil: String(sicil),
         doctorName,
-        sender: currentUsername() || "kullanici",
+        sender: fromUser,
+        fromUser,
+        toUser,
         body,
         read: true,
         createdAt: new Date().toISOString()
@@ -2453,6 +2500,7 @@
       upsertLocalMessage(item);
       try {
         await syncMessageToSupabase(item);
+        await loadSupabaseMessages({ silent: true });
         const refreshedStatus = document.getElementById("messageComposeStatus");
         if (refreshedStatus) refreshedStatus.textContent = "Mesaj gönderildi.";
       } catch (error) {
@@ -2471,6 +2519,8 @@
           doctor_sicil: item.doctorSicil,
           doctor_name: item.doctorName,
           sender: item.sender,
+          from_user: item.fromUser,
+          to_user: item.toUser,
           body: item.body,
           created_at: item.createdAt
         })
@@ -2479,9 +2529,9 @@
 
     async function loadSupabaseMessages({ silent = false } = {}) {
       try {
-        const records = await supabaseRequest(`${messageTable}?select=id,doctor_sicil,doctor_name,sender,body,created_at&order=created_at.desc&limit=300`);
+        const records = await supabaseRequest(`${messageTable}?select=id,doctor_sicil,doctor_name,sender,from_user,to_user,body,created_at&order=created_at.desc&limit=300`);
         if (!Array.isArray(records)) return;
-        const fingerprint = JSON.stringify(records.map(record => [record.id, record.doctor_sicil, record.sender, record.body, record.created_at]));
+        const fingerprint = JSON.stringify(records.map(record => [record.id, record.doctor_sicil, record.sender, record.from_user, record.to_user, record.body, record.created_at]));
         if (fingerprint === lastMessageFingerprint && silent) return;
         lastMessageFingerprint = fingerprint;
         const localReadState = new Map(savedMessages().map(item => [item.id, item.read]));
@@ -2490,13 +2540,19 @@
           return { ...message, read: localReadState.get(message.id) || message.read };
         });
         saveMessages(remoteMessages);
+        lastMessageSyncText = `Mesajlar güncel: ${remoteMessages.length} kayıt`;
         renderMessageBadge();
         if (!els.messageView.hidden) {
-          if (activeMessageSicil) renderMessageThread(activeMessageSicil);
+          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
           else renderMessageInbox();
         }
-      } catch {
+      } catch (error) {
+        lastMessageSyncText = `Mesajlar alınamadı: ${error.message}`;
         if (!silent) renderMessageBadge();
+        if (!silent && !els.messageView.hidden) {
+          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
+          else renderMessageInbox();
+        }
       }
     }
 
