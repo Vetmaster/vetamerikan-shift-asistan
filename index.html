@@ -820,6 +820,15 @@
       font-size: 11px;
       font-weight: 800;
     }
+    .message-status {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 900;
+      text-align: right;
+    }
+    .message-status.read {
+      color: var(--brand);
+    }
     .message-compose {
       position: sticky;
       bottom: 0;
@@ -1407,7 +1416,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.23.05";
+    const appVersion = "2026.06.23.07";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1589,6 +1598,7 @@
       "semih izmirli": "6428"
     };
     const doctorUserOverrides = {
+      "60399": "emrekul",
       "60420": "hasansar"
     };
     const state = { day: dayForDataset(builtInDataset), shift: "morning", query: "" };
@@ -2316,7 +2326,13 @@
     function unreadMessageCount() {
       const username = messageUser(currentUsername());
       if (!username) return 0;
-      return savedMessages().filter(item => !item.read && messageUser(item.toUser) === username).length;
+      return savedMessages().filter(item => !item.readAt && messageUser(item.toUser) === username).length;
+    }
+
+    function messageStatusMarkup(item) {
+      if (messageUser(item.fromUser || item.sender) !== messageUser(currentUsername())) return "";
+      const isRead = Boolean(item.readAt);
+      return `<span class="message-status${isRead ? " read" : ""}">${isRead ? "✓✓ Okundu" : "✓ İletildi"}</span>`;
     }
 
     function renderMessageBadge() {
@@ -2352,7 +2368,8 @@
         fromUser: messageUser(record.from_user || record.sender || ""),
         toUser: messageUser(record.to_user || ""),
         body: record.body || "",
-        read: local?.read || messageUser(record.from_user || record.sender) === messageUser(currentUsername()),
+        readAt: record.read_at || local?.readAt || "",
+        read: Boolean(record.read_at || local?.readAt) || messageUser(record.from_user || record.sender) === messageUser(currentUsername()),
         createdAt: record.created_at || new Date().toISOString()
       };
     }
@@ -2379,13 +2396,20 @@
     function markThreadRead(sicil, peer) {
       const username = messageUser(currentUsername());
       const normalizedPeer = messageUser(peer);
-      const items = savedMessages().map(item => (
-        item.doctorSicil === String(sicil) && messagePeer(item) === normalizedPeer && messageUser(item.toUser) === username
-          ? { ...item, read: true }
-          : item
-      ));
+      const readAt = new Date().toISOString();
+      const changedIds = [];
+      const items = savedMessages().map(item => {
+        const shouldRead = item.doctorSicil === String(sicil)
+          && messagePeer(item) === normalizedPeer
+          && messageUser(item.toUser) === username
+          && !item.readAt;
+        if (!shouldRead) return item;
+        changedIds.push(item.id);
+        return { ...item, read: true, readAt };
+      });
       saveMessages(items);
       renderMessageBadge();
+      changedIds.forEach(id => syncMessageReadToSupabase(id, readAt));
     }
 
     function renderMessageInbox() {
@@ -2441,9 +2465,10 @@
         </div>
         <div class="message-chat">
           ${messages.length ? messages.map(item => `
-            <article class="message-bubble${item.sender === currentUsername() ? " mine" : ""}">
+            <article class="message-bubble${messageUser(item.sender || item.fromUser) === messageUser(currentUsername()) ? " mine" : ""}">
               <p>${escapeHtml(item.body)}</p>
               <small>${escapeHtml(item.sender || item.fromUser || "Kullanıcı")} · ${escapeHtml(messageTimeLabel(item.createdAt))}</small>
+              ${messageStatusMarkup(item)}
             </article>
           `).join("") : '<div class="empty">Bu hekimle henüz mesaj yok.</div>'}
         </div>
@@ -2501,6 +2526,7 @@
         toUser: recipient,
         body,
         read: true,
+        readAt: "",
         createdAt: new Date().toISOString()
       };
       input.value = "";
@@ -2530,16 +2556,29 @@
           from_user: item.fromUser,
           to_user: item.toUser,
           body: item.body,
+          read_at: item.readAt || null,
           created_at: item.createdAt
         })
       });
     }
 
+    async function syncMessageReadToSupabase(id, readAt) {
+      try {
+        await supabaseRequest(`${messageTable}?id=eq.${encodeURIComponent(id)}`, {
+          method: "PATCH",
+          headers: { Prefer: "return=minimal" },
+          body: JSON.stringify({ read_at: readAt })
+        });
+      } catch {
+        // Okundu bilgisi bir sonraki ekranda yerelden yine korunur.
+      }
+    }
+
     async function loadSupabaseMessages({ silent = false } = {}) {
       try {
-        const records = await supabaseRequest(`${messageTable}?select=id,doctor_sicil,doctor_name,sender,from_user,to_user,body,created_at&order=created_at.desc&limit=300`);
+        const records = await supabaseRequest(`${messageTable}?select=id,doctor_sicil,doctor_name,sender,from_user,to_user,body,read_at,created_at&order=created_at.desc&limit=300`);
         if (!Array.isArray(records)) return;
-        const fingerprint = JSON.stringify(records.map(record => [record.id, record.doctor_sicil, record.sender, record.from_user, record.to_user, record.body, record.created_at]));
+        const fingerprint = JSON.stringify(records.map(record => [record.id, record.doctor_sicil, record.sender, record.from_user, record.to_user, record.body, record.read_at, record.created_at]));
         if (fingerprint === lastMessageFingerprint && silent) return;
         lastMessageFingerprint = fingerprint;
         const localReadState = new Map(savedMessages().map(item => [item.id, item.read]));
@@ -2565,7 +2604,7 @@
     }
 
     function handleSupabaseMessage(payload) {
-      if (payload.eventType !== "INSERT" || !payload.new?.id) return;
+      if (!["INSERT", "UPDATE"].includes(payload.eventType) || !payload.new?.id) return;
       upsertLocalMessage(messageFromRecord(payload.new));
     }
 
@@ -2901,7 +2940,7 @@
       supabaseMessageChannel = supabaseClient
         .channel("shift-messages-realtime")
         .on("postgres_changes", {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: messageTable
         }, handleSupabaseMessage)
