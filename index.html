@@ -1594,7 +1594,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.13";
+    const appVersion = "2026.06.24.14";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -2715,7 +2715,7 @@
       saveMessages(items);
       renderMessageBadge();
       if (!els.messageView.hidden) {
-        if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
+        if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer, { pushHistory: false });
         else renderMessageInbox();
       }
     }
@@ -2977,14 +2977,14 @@
         lastMessageSyncText = `Mesajlar güncel: ${remoteMessages.length} kayıt`;
         renderMessageBadge();
         if (!els.messageView.hidden) {
-          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
+          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer, { pushHistory: false });
           else renderMessageInbox();
         }
       } catch (error) {
         lastMessageSyncText = `Mesajlar alınamadı: ${error.message}`;
         if (!silent) renderMessageBadge();
         if (!silent && !els.messageView.hidden) {
-          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer);
+          if (activeMessageSicil) renderMessageThread(activeMessageSicil, activeMessagePeer, { pushHistory: false });
           else renderMessageInbox();
         }
       }
