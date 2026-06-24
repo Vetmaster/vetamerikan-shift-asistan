@@ -1631,6 +1631,7 @@
     const authUserStorageKey = "vetamerikan-shift-auth-user";
     const authUserCreatedAtStorageKey = "vetamerikan-shift-auth-user-created-at";
     const authUsersStorageKey = "vetamerikan-shift-users";
+    const authDeviceStorageKey = "vetamerikan-shift-device-id";
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const notificationListStorageKey = "vetamerikan-shift-notification-list";
     const notificationClearedAtStorageKey = "vetamerikan-shift-notifications-cleared-at";
@@ -1641,7 +1642,10 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.24.26";
+    const appVersion = "2026.06.25.01";
+    const notificationReadMarkerTitle = "__VSA_READ__";
+    const notificationClearMarkerTitle = "__VSA_CLEAR__";
+    const sessionMarkerTitle = "__VSA_SESSION__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1950,6 +1954,80 @@
       return String(email || "").split("@")[0] || "";
     }
 
+    function currentDeviceId() {
+      let id = localStorage.getItem(authDeviceStorageKey);
+      if (id) return id;
+      id = window.crypto?.randomUUID
+        ? window.crypto.randomUUID()
+        : `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      localStorage.setItem(authDeviceStorageKey, id);
+      return id;
+    }
+
+    function sessionMarkerId(username = currentUsername()) {
+      return `session:${authUsername(username)}`;
+    }
+
+    function sessionMarkerUser(record) {
+      const [username] = String(record.body || "").split("|");
+      return messageUser(username);
+    }
+
+    function sessionMarkerDevice(record) {
+      return String(record.body || "").split("|")[1] || "";
+    }
+
+    async function syncActiveDeviceSession(username = currentUsername()) {
+      const normalized = authUsername(username);
+      if (!normalized) return;
+      await supabaseRequest(`${notificationTable}?on_conflict=id`, {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({
+          id: sessionMarkerId(normalized),
+          title: sessionMarkerTitle,
+          body: `${normalized}|${currentDeviceId()}`,
+          created_at: new Date().toISOString()
+        })
+      });
+    }
+
+    async function forceLocalLogout(message = "Bu hesap başka bir cihazda açıldı.") {
+      resetToHomeView();
+      replaceAppHistory("home");
+      try {
+        await supabaseClient?.auth.signOut({ scope: "local" });
+      } catch {
+        // Yerel çıkış için Supabase cevabı beklenmez.
+      }
+      clearAuth();
+      updateUserBadge();
+      updateAdminVisibility();
+      document.body.classList.add("locked");
+      els.authError.textContent = message;
+      requestAnimationFrame(() => els.authUsername.focus());
+    }
+
+    async function verifySingleDeviceSession({ claimIfMissing = false } = {}) {
+      const username = currentUsername();
+      if (!username || !supabaseClient) return true;
+      try {
+        const records = await supabaseRequest(`${notificationTable}?select=id,title,body,created_at&id=eq.${encodeURIComponent(sessionMarkerId(username))}&limit=1`);
+        const marker = Array.isArray(records) ? records.find(record => record.title === sessionMarkerTitle) : null;
+        if (!marker) {
+          if (claimIfMissing) await syncActiveDeviceSession(username);
+          return true;
+        }
+        if (sessionMarkerDevice(marker) && sessionMarkerDevice(marker) !== currentDeviceId()) {
+          await forceLocalLogout();
+          return false;
+        }
+        return true;
+      } catch {
+        return true;
+      }
+    }
+
     async function signInWithSupabase(username, password) {
       lastAuthError = "";
       if (!supabaseClient) return false;
@@ -1962,6 +2040,7 @@
         return false;
       }
       saveAuth(data.user?.user_metadata?.username || usernameFromAuthEmail(data.user?.email) || username, data.user?.created_at);
+      await syncActiveDeviceSession(username);
       return true;
     }
 
@@ -1980,6 +2059,7 @@
         return;
       }
       saveAuth(data.user?.user_metadata?.username || username, data.user?.created_at);
+      await syncActiveDeviceSession(username);
     }
 
     async function migrateLegacyUser(username, password) {
@@ -2281,7 +2361,7 @@
     async function lockApp() {
       resetToHomeView();
       replaceAppHistory("home");
-      if (supabaseClient) await supabaseClient.auth.signOut();
+      if (supabaseClient) await supabaseClient.auth.signOut({ scope: "local" });
       clearAuth();
       updateUserBadge();
       updateAdminVisibility();
@@ -2298,6 +2378,7 @@
         const user = data.session?.user;
         if (user) {
           saveAuth(user.user_metadata?.username || usernameFromAuthEmail(user.email), user.created_at);
+          if (!await verifySingleDeviceSession({ claimIfMissing: true })) return;
           unlockApp();
           return;
         }
@@ -2305,6 +2386,7 @@
       const legacyUser = sessionStorage.getItem(authUserStorageKey);
       if (legacyUser && sessionStorage.getItem(authStorageKey) === "1") saveAuth(legacyUser);
       if (localStorage.getItem(authStorageKey) === "1" && currentUsername()) {
+        if (!await verifySingleDeviceSession({ claimIfMissing: true })) return;
         unlockApp();
         return;
       }
@@ -2596,7 +2678,66 @@
       localStorage.setItem(notificationListStorageKey, JSON.stringify(items.filter(isNotificationAfterClear).slice(0, 80)));
     }
 
+    function notificationMarkerUser(record) {
+      const [username] = String(record.body || "").split("|");
+      return messageUser(username);
+    }
+
+    function notificationMarkerValue(record) {
+      return String(record.body || "").split("|").slice(1).join("|");
+    }
+
+    function isNotificationStateRecord(record) {
+      return record.title === notificationReadMarkerTitle
+        || record.title === notificationClearMarkerTitle
+        || record.title === sessionMarkerTitle;
+    }
+
+    function notificationStateForRecords(records) {
+      const username = messageUser(currentUsername());
+      const readIds = new Set();
+      const clearTimes = [];
+      records.filter(isNotificationStateRecord).forEach(record => {
+        if (record.title === sessionMarkerTitle) return;
+        if (notificationMarkerUser(record) !== username) return;
+        if (record.title === notificationReadMarkerTitle) {
+          readIds.add(notificationMarkerValue(record));
+          return;
+        }
+        const markerTime = notificationMarkerValue(record) || record.created_at;
+        const time = new Date(markerTime || 0).getTime();
+        if (!Number.isNaN(time) && time > 0) clearTimes.push(time);
+      });
+      return {
+        readIds,
+        clearedAt: clearTimes.length ? new Date(Math.max(...clearTimes)).toISOString() : ""
+      };
+    }
+
+    async function syncNotificationStateMarker(type, value) {
+      const username = messageUser(currentUsername());
+      if (!username || !value) return;
+      const title = type === "clear" ? notificationClearMarkerTitle : notificationReadMarkerTitle;
+      const idValue = String(value).replace(/[^a-zA-Z0-9_.:-]/g, "_").slice(0, 180);
+      const id = `state:${username}:${type}:${idValue}`;
+      try {
+        await supabaseRequest(`${notificationTable}?on_conflict=id`, {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify({
+            id,
+            title,
+            body: `${username}|${value}`,
+            created_at: new Date().toISOString()
+          })
+        });
+      } catch {
+        // Cihaz yereli yine güncel kalır; Supabase uygunsa diğer cihazlar da markerı alır.
+      }
+    }
+
     function upsertLocalNotification(item) {
+      if (isNotificationStateRecord(item)) return;
       if (!isNotificationAfterClear(item)) return;
       const items = savedNotifications();
       if (items.some(existing => existing.id === item.id)) return;
@@ -3072,7 +3213,9 @@
     }
 
     function clearNotifications() {
-      localStorage.setItem(notificationClearedAtStorageKey, new Date().toISOString());
+      const clearedAt = new Date().toISOString();
+      localStorage.setItem(notificationClearedAtStorageKey, clearedAt);
+      syncNotificationStateMarker("clear", clearedAt);
       saveNotifications([]);
       renderNotificationBadge();
       renderNotificationCenter();
@@ -3091,6 +3234,7 @@
       els.app.classList.add("notification-mode");
       const items = savedNotifications();
       saveNotifications(items.map(item => ({ ...item, read: true })));
+      items.forEach(item => syncNotificationStateMarker("read", item.id));
       renderNotificationBadge();
     }
 
@@ -3145,24 +3289,32 @@
         id: String(record.id),
         title: record.title || "Bildirim",
         body: record.body || "",
-        read: savedNotifications().find(item => item.id === String(record.id))?.read || false,
+        read: false,
         createdAt: record.created_at || new Date().toISOString()
       };
     }
 
     async function loadSupabaseNotifications({ silent = false } = {}) {
       try {
-        const records = await supabaseRequest(`${notificationTable}?select=id,title,body,created_at&order=created_at.desc&limit=80`);
+        const records = await supabaseRequest(`${notificationTable}?select=id,title,body,created_at&order=created_at.desc&limit=300`);
         if (!Array.isArray(records)) return;
         const fingerprint = JSON.stringify(records.map(record => [record.id, record.title, record.body, record.created_at]));
         if (fingerprint === lastNotificationFingerprint && silent) return;
         lastNotificationFingerprint = fingerprint;
+        const remoteState = notificationStateForRecords(records);
+        if (remoteState.clearedAt) {
+          const localClearedAt = notificationClearedAt();
+          if (!localClearedAt || new Date(remoteState.clearedAt) > new Date(localClearedAt)) {
+            localStorage.setItem(notificationClearedAtStorageKey, remoteState.clearedAt);
+          }
+        }
         const localItems = savedNotifications();
         const readState = new Map(localItems.map(item => [item.id, item.read]));
         const remoteItems = records
+          .filter(record => !isNotificationStateRecord(record))
           .map(record => ({
             ...notificationFromRecord(record),
-            read: readState.get(String(record.id)) || false
+            read: remoteState.readIds.has(String(record.id)) || readState.get(String(record.id)) || false
           }))
           .filter(isNotificationAfterClear);
         saveNotifications(remoteItems);
@@ -3174,7 +3326,27 @@
     }
 
     function handleSupabaseNotification(payload) {
-      if (payload.eventType !== "INSERT" || !payload.new?.id) return;
+      if (!["INSERT", "UPDATE"].includes(payload.eventType) || !payload.new?.id) return;
+      if (payload.new.title === sessionMarkerTitle) {
+        if (sessionMarkerUser(payload.new) === messageUser(currentUsername()) && sessionMarkerDevice(payload.new) !== currentDeviceId()) {
+          forceLocalLogout();
+        }
+        return;
+      }
+      if (isNotificationStateRecord(payload.new)) {
+        if (notificationMarkerUser(payload.new) !== messageUser(currentUsername())) return;
+        if (payload.new.title === notificationClearMarkerTitle) {
+          const clearedAt = notificationMarkerValue(payload.new) || payload.new.created_at || new Date().toISOString();
+          localStorage.setItem(notificationClearedAtStorageKey, clearedAt);
+          saveNotifications(savedNotifications());
+        } else {
+          const readId = notificationMarkerValue(payload.new);
+          saveNotifications(savedNotifications().map(item => item.id === readId ? { ...item, read: true } : item));
+        }
+        renderNotificationBadge();
+        if (!els.notificationView.hidden) renderNotificationCenter();
+        return;
+      }
       const item = notificationFromRecord(payload.new);
       upsertLocalNotification(item);
     }
@@ -3367,7 +3539,7 @@
       supabaseNotificationChannel = supabaseClient
         .channel("shift-notifications-realtime")
         .on("postgres_changes", {
-          event: "INSERT",
+          event: "*",
           schema: "public",
           table: notificationTable
         }, handleSupabaseNotification)
@@ -3387,6 +3559,7 @@
     function startSupabasePollingFallback() {
       if (supabasePollTimer) window.clearTimeout(supabasePollTimer);
       const poll = async () => {
+        if (!await verifySingleDeviceSession()) return;
         await loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
         await loadSupabaseNotifications({ silent: true });
         await loadSupabaseMessages({ silent: true });
@@ -3396,12 +3569,14 @@
     }
 
     function syncWhenAppBecomesActive() {
+      verifySingleDeviceSession();
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
       loadSupabaseNotifications({ silent: true });
       loadSupabaseMessages({ silent: true });
     }
 
     function forceSupabaseRefresh() {
+      verifySingleDeviceSession();
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: false });
       loadSupabaseNotifications({ silent: false });
       loadSupabaseMessages({ silent: false });
