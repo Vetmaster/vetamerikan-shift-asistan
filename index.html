@@ -781,6 +781,24 @@
       font-size: 12px;
       margin-top: 2px;
     }
+    .profile-day-addons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .profile-day-addons .list-badge {
+      margin-left: 0;
+    }
+    .profile-day-actions {
+      justify-self: end;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .profile-day-actions .list-badge {
+      margin-left: 0;
+    }
     .profile-day-badge {
       display: inline-flex;
       align-items: center;
@@ -1631,7 +1649,6 @@
     const authUserStorageKey = "vetamerikan-shift-auth-user";
     const authUserCreatedAtStorageKey = "vetamerikan-shift-auth-user-created-at";
     const authUsersStorageKey = "vetamerikan-shift-users";
-    const authDeviceStorageKey = "vetamerikan-shift-device-id";
     const notificationStorageKey = "vetamerikan-shift-notifications-enabled";
     const notificationListStorageKey = "vetamerikan-shift-notification-list";
     const notificationClearedAtStorageKey = "vetamerikan-shift-notifications-cleared-at";
@@ -1642,10 +1659,9 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.25.01";
+    const appVersion = "2026.06.25.04";
     const notificationReadMarkerTitle = "__VSA_READ__";
     const notificationClearMarkerTitle = "__VSA_CLEAR__";
-    const sessionMarkerTitle = "__VSA_SESSION__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
     const authEmailDomain = "vetamerikan-shift.com";
     let lastAuthError = "";
@@ -1687,7 +1703,7 @@
     }
 
     const rows = [
-      ["Cerrahi","Emine Esma Çerez","60371",["8-17","8-17","","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17"]],
+      ["Cerrahi","Emine Esma Çerez","60371",["8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17"]],
       ["Cerrahi","Nihan Dikbaş Tsatsaronis","60313",["S","S","S","S","S","","A","A","A","A","A","A","","S","A","A","A","A","A","","S","S","S","S","S","S","","S","S","S"]],
       ["Cerrahi","Burak Gümürcünler","60455",["A","A","A","A","A","A","","S","S","S","S","S","A","","S","S","S","S","S","A","","A","A","A","A","A","A","","A","A"]],
       ["Cerrahi","Yağmur Koçak","60502",["S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S"]],
@@ -1714,6 +1730,30 @@
       ["Genel Muayene","Gamze Kartal Mehmedov","60481",["9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","9-17","",""]],
       ["Genel Muayene","Mehmet Kızıloğlu","60501",["S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","",""]]
     ];
+
+    function addIcapToRaw(raw) {
+      const value = String(raw || "").trim();
+      if (!value) return "İ";
+      if (value === "İ" || value.toLocaleLowerCase("tr-TR").includes("icap")) return value;
+      return `${value} + İcap`;
+    }
+
+    const juneIcapDaysBySicil = {
+      "60371": [22, 23, 24, 25, 26, 27, 28],
+      "60313": [8, 9, 10, 11, 12, 13],
+      "60455": [1, 2, 3, 4, 5, 6, 7, 29, 30],
+      "60502": [15, 16, 17, 18, 19, 20, 21],
+      "60374": [8, 9, 10, 11, 12, 13, 14],
+      "60399": [1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 22, 23, 24, 25, 26, 27, 29, 30],
+      "60508": [6, 13, 20, 27]
+    };
+
+    rows.forEach(row => {
+      const icapDays = juneIcapDaysBySicil[row[2]] || [];
+      icapDays.forEach(day => {
+        row[3][day - 1] = addIcapToRaw(row[3][day - 1]);
+      });
+    });
 
     const overrideStorageKey = "vetamerikan-shift-inline-overrides-june-2026";
     const julyRows = [["Cerrahi","Emine Esma Çerez","60371",["S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17","10-16","","8-17","8-17","S","8-17","8-17"]],["Cerrahi","Nihan Dikbaş Tsatsaronis","60313",["S","S","S","","A","A","A","A","A","A","","A","A","A","A","A","A","","S","S","S","S","S","S","","S","S","S","S","S","S"]],["Cerrahi","Burak Gümürcünler","60455",["A","A","A","A","","S","S","S","S","S","A","","S","S","S","S","S","A","","A","A","A","A","A","A","","A","A","A","A","A"]],["Cerrahi","Yağmur Koçak","60502",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Dahiliye","Öykü Sargın","60374",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Dahiliye","Emre Külük","60399",["12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22","","S","12-22","10-20","12-22","10-20","12-22"]],["Dahiliye","Efrahim Sargın","60373",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Prof. Asistanı","Özgecan Küleyinoğlu","60314",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Prof. Asistanı","Sevde İslamoğlu","60380",["S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","A","S","S","S","S","S","","A","S","S","S","S","S"]],["Genel Muayene","Semih İzmirli","60375",["S","S","S","S","S","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Hasan Sargın","60420",["A","A","A","","A","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Yusuf Sefa Dedeoğlu","60508",["8-17.30","","","8-18","8-17.30","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Emre Koçak","60415",["S","S","S","A","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Tolga Baturalp Tavşanlı","60536",["S","S","S","S","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Mehmet Yıldız","60400",["20-08","","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Yağmur Kaplan","60382",["","","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Meryemnur Tecimer","60416",["","08-20","20-08","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Aysu Altın","60391",["08-20","20-08","","","20-08","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Sıla Çınar İzmirli","60430",["S","20-08","","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Rüzgar Aktaş","60435",["","08-20","08-20","20-08","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Görkem Koçak","60488",["20-08","","20-08","","08-20","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Begüm Öztürk","60538",["08-20","20-08","","S","","","","","","","","","","","","","","","","","","","","","","","","","","",""]],["Genel Muayene","Melisanur Ural","60448",["S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Genel Muayene","Gamze Kartal Mehmedov","60481",["","","","","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17","9-17","","9-17","9-17","9-17","9-17","9-17"]],["Genel Muayene","Mehmet Kızıloğlu","60501",["","","","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S","S","","S","S","S","S","S"]],["Genel Muayene","Erhan Gülçiçek","60483",["","","","","","","","","","","","","","","","","","","","","","","","","","","","","","",""]]];
@@ -1954,80 +1994,6 @@
       return String(email || "").split("@")[0] || "";
     }
 
-    function currentDeviceId() {
-      let id = localStorage.getItem(authDeviceStorageKey);
-      if (id) return id;
-      id = window.crypto?.randomUUID
-        ? window.crypto.randomUUID()
-        : `device-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-      localStorage.setItem(authDeviceStorageKey, id);
-      return id;
-    }
-
-    function sessionMarkerId(username = currentUsername()) {
-      return `session:${authUsername(username)}`;
-    }
-
-    function sessionMarkerUser(record) {
-      const [username] = String(record.body || "").split("|");
-      return messageUser(username);
-    }
-
-    function sessionMarkerDevice(record) {
-      return String(record.body || "").split("|")[1] || "";
-    }
-
-    async function syncActiveDeviceSession(username = currentUsername()) {
-      const normalized = authUsername(username);
-      if (!normalized) return;
-      await supabaseRequest(`${notificationTable}?on_conflict=id`, {
-        method: "POST",
-        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-        body: JSON.stringify({
-          id: sessionMarkerId(normalized),
-          title: sessionMarkerTitle,
-          body: `${normalized}|${currentDeviceId()}`,
-          created_at: new Date().toISOString()
-        })
-      });
-    }
-
-    async function forceLocalLogout(message = "Bu hesap başka bir cihazda açıldı.") {
-      resetToHomeView();
-      replaceAppHistory("home");
-      try {
-        await supabaseClient?.auth.signOut({ scope: "local" });
-      } catch {
-        // Yerel çıkış için Supabase cevabı beklenmez.
-      }
-      clearAuth();
-      updateUserBadge();
-      updateAdminVisibility();
-      document.body.classList.add("locked");
-      els.authError.textContent = message;
-      requestAnimationFrame(() => els.authUsername.focus());
-    }
-
-    async function verifySingleDeviceSession({ claimIfMissing = false } = {}) {
-      const username = currentUsername();
-      if (!username || !supabaseClient) return true;
-      try {
-        const records = await supabaseRequest(`${notificationTable}?select=id,title,body,created_at&id=eq.${encodeURIComponent(sessionMarkerId(username))}&limit=1`);
-        const marker = Array.isArray(records) ? records.find(record => record.title === sessionMarkerTitle) : null;
-        if (!marker) {
-          if (claimIfMissing) await syncActiveDeviceSession(username);
-          return true;
-        }
-        if (sessionMarkerDevice(marker) && sessionMarkerDevice(marker) !== currentDeviceId()) {
-          await forceLocalLogout();
-          return false;
-        }
-        return true;
-      } catch {
-        return true;
-      }
-    }
-
     async function signInWithSupabase(username, password) {
       lastAuthError = "";
       if (!supabaseClient) return false;
@@ -2040,7 +2006,6 @@
         return false;
       }
       saveAuth(data.user?.user_metadata?.username || usernameFromAuthEmail(data.user?.email) || username, data.user?.created_at);
-      await syncActiveDeviceSession(username);
       return true;
     }
 
@@ -2059,7 +2024,6 @@
         return;
       }
       saveAuth(data.user?.user_metadata?.username || username, data.user?.created_at);
-      await syncActiveDeviceSession(username);
     }
 
     async function migrateLegacyUser(username, password) {
@@ -2378,7 +2342,6 @@
         const user = data.session?.user;
         if (user) {
           saveAuth(user.user_metadata?.username || usernameFromAuthEmail(user.email), user.created_at);
-          if (!await verifySingleDeviceSession({ claimIfMissing: true })) return;
           unlockApp();
           return;
         }
@@ -2386,7 +2349,6 @@
       const legacyUser = sessionStorage.getItem(authUserStorageKey);
       if (legacyUser && sessionStorage.getItem(authStorageKey) === "1") saveAuth(legacyUser);
       if (localStorage.getItem(authStorageKey) === "1" && currentUsername()) {
-        if (!await verifySingleDeviceSession({ claimIfMissing: true })) return;
         unlockApp();
         return;
       }
@@ -2689,8 +2651,7 @@
 
     function isNotificationStateRecord(record) {
       return record.title === notificationReadMarkerTitle
-        || record.title === notificationClearMarkerTitle
-        || record.title === sessionMarkerTitle;
+        || record.title === notificationClearMarkerTitle;
     }
 
     function notificationStateForRecords(records) {
@@ -2698,7 +2659,6 @@
       const readIds = new Set();
       const clearTimes = [];
       records.filter(isNotificationStateRecord).forEach(record => {
-        if (record.title === sessionMarkerTitle) return;
         if (notificationMarkerUser(record) !== username) return;
         if (record.title === notificationReadMarkerTitle) {
           readIds.add(notificationMarkerValue(record));
@@ -3327,12 +3287,6 @@
 
     function handleSupabaseNotification(payload) {
       if (!["INSERT", "UPDATE"].includes(payload.eventType) || !payload.new?.id) return;
-      if (payload.new.title === sessionMarkerTitle) {
-        if (sessionMarkerUser(payload.new) === messageUser(currentUsername()) && sessionMarkerDevice(payload.new) !== currentDeviceId()) {
-          forceLocalLogout();
-        }
-        return;
-      }
       if (isNotificationStateRecord(payload.new)) {
         if (notificationMarkerUser(payload.new) !== messageUser(currentUsername())) return;
         if (payload.new.title === notificationClearMarkerTitle) {
@@ -3559,7 +3513,6 @@
     function startSupabasePollingFallback() {
       if (supabasePollTimer) window.clearTimeout(supabasePollTimer);
       const poll = async () => {
-        if (!await verifySingleDeviceSession()) return;
         await loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
         await loadSupabaseNotifications({ silent: true });
         await loadSupabaseMessages({ silent: true });
@@ -3569,14 +3522,12 @@
     }
 
     function syncWhenAppBecomesActive() {
-      verifySingleDeviceSession();
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: true });
       loadSupabaseNotifications({ silent: true });
       loadSupabaseMessages({ silent: true });
     }
 
     function forceSupabaseRefresh() {
-      verifySingleDeviceSession();
       loadSupabaseOverrides({ replace: true, syncLocal: false, silent: false });
       loadSupabaseNotifications({ silent: false });
       loadSupabaseMessages({ silent: false });
@@ -3984,8 +3935,11 @@
         <div class="profile-days">
           ${entries.map(item => `
             <div class="profile-day${item.day.day === today ? " today" : ""}">
-              <span><strong>${item.day.long}${item.day.day === today ? '<span class="profile-day-badge profile-today-badge">Bugün</span>' : ""}${isNightRaw(item.raw) ? '<span class="profile-day-badge profile-night-badge">Gece</span>' : ""}</strong><small>${item.icap ? "İcap var" : "İcap yok"}</small></span>
-              <button class="code-button ${item.className}${readOnlyClass}" type="button" data-profile-code="1" data-day="${item.day.day}" data-sicil="${row.sicil}" data-name="${row.name}" data-value="${item.raw}" aria-label="${row.name} ${item.day.long} vardiya seç"${readOnlyAttrs}>${item.label}</button>
+              <span><strong>${item.day.long}${item.day.day === today ? '<span class="profile-day-badge profile-today-badge">Bugün</span>' : ""}${isNightRaw(item.raw) ? '<span class="profile-day-badge profile-night-badge">Gece</span>' : ""}</strong></span>
+              <div class="profile-day-actions">
+                ${item.icap ? '<span class="list-badge icap-badge">İcap</span>' : ""}
+                <button class="code-button ${item.className}${readOnlyClass}" type="button" data-profile-code="1" data-day="${item.day.day}" data-sicil="${row.sicil}" data-name="${row.name}" data-value="${item.raw}" aria-label="${row.name} ${item.day.long} vardiya seç"${readOnlyAttrs}>${item.label}</button>
+              </div>
             </div>
           `).join("")}
         </div>
