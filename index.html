@@ -1659,7 +1659,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.25.04";
+    const appVersion = "2026.06.25.05";
     const notificationReadMarkerTitle = "__VSA_READ__";
     const notificationClearMarkerTitle = "__VSA_CLEAR__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
@@ -2046,16 +2046,12 @@
       localStorage.setItem(authStorageKey, "1");
       localStorage.setItem(authUserStorageKey, authUsername(username));
       if (createdAt) localStorage.setItem(authUserCreatedAtStorageKey, createdAt);
-      sessionStorage.removeItem(authStorageKey);
-      sessionStorage.removeItem(authUserStorageKey);
     }
 
     function clearAuth() {
       localStorage.removeItem(authStorageKey);
       localStorage.removeItem(authUserStorageKey);
       localStorage.removeItem(authUserCreatedAtStorageKey);
-      sessionStorage.removeItem(authStorageKey);
-      sessionStorage.removeItem(authUserStorageKey);
     }
 
     function currentUsername() {
@@ -2346,8 +2342,6 @@
           return;
         }
       }
-      const legacyUser = sessionStorage.getItem(authUserStorageKey);
-      if (legacyUser && sessionStorage.getItem(authStorageKey) === "1") saveAuth(legacyUser);
       if (localStorage.getItem(authStorageKey) === "1" && currentUsername()) {
         unlockApp();
         return;
@@ -2692,7 +2686,7 @@
           })
         });
       } catch {
-        // Cihaz yereli yine güncel kalır; Supabase uygunsa diğer cihazlar da markerı alır.
+        // Yerel bildirim durumu korunur; Supabase uygunsa marker sonra eşitlenir.
       }
     }
 
@@ -3602,7 +3596,7 @@
           })
         });
       } catch (error) {
-        els.importStatus.textContent = `${dataset.label} bu cihazda oluşturuldu, Supabase'e yazılamadı.`;
+        els.importStatus.textContent = `${dataset.label} yerel olarak oluşturuldu, Supabase'e yazılamadı.`;
       }
     }
 
