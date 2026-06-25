@@ -1228,6 +1228,20 @@
       color: #fff;
       font-weight: 900;
     }
+    .drawer-install-link {
+      min-height: 44px;
+      border: 1px solid var(--brand);
+      border-radius: 8px;
+      background: linear-gradient(135deg, #e7f5f6, #f7fafc);
+      color: var(--brand);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 10px;
+      font-size: 13px;
+      font-weight: 900;
+      text-decoration: none;
+    }
     .tools-accordion {
       border: 1px solid var(--line);
       border-radius: 8px;
@@ -1400,6 +1414,7 @@
       grid-template-columns: 1fr auto auto;
       align-items: center;
       gap: 8px;
+      order: -1;
       padding: 10px 12px;
       border: 1px solid rgba(15, 108, 116, .18);
       border-radius: 8px;
@@ -1472,6 +1487,15 @@
   </section>
 
   <main id="app" class="app">
+    <section id="androidInstallPrompt" class="android-install-prompt" hidden>
+      <span>
+        <strong>Android uygulaması hazır</strong>
+        <small>Web yerine telefonuna APK olarak kurabilirsin.</small>
+      </span>
+      <a id="androidInstallLink" href="Vetamerikan-Shift-Asistan-debug.apk" download>Uygulamayı kur</a>
+      <button id="androidInstallDismiss" type="button">Daha sonra</button>
+    </section>
+
     <header class="top">
       <div class="brand">
         <h1>
@@ -1507,15 +1531,6 @@
       </div>
       <div id="dayStrip" class="day-strip" aria-label="Gün seç"></div>
     </header>
-
-    <section id="androidInstallPrompt" class="android-install-prompt" hidden>
-      <span>
-        <strong>Android uygulaması hazır</strong>
-        <small>Web yerine telefonuna APK olarak kurabilirsin.</small>
-      </span>
-      <a id="androidInstallLink" href="Vetamerikan-Shift-Asistan-debug.apk" download>Uygulamayı kur</a>
-      <button id="androidInstallDismiss" type="button">Daha sonra</button>
-    </section>
 
     <div id="shiftTabs" class="shift-tabs" aria-label="Vardiya seç">
       <button class="shift-tab active" data-shift="morning" type="button">Sabah<small id="morningTabCount">0 kişi</small></button>
@@ -1681,6 +1696,7 @@
       </details>
       <div id="notificationStatus" class="import-status" hidden></div>
       <div id="appVersionLabel" class="import-status" hidden></div>
+      <a id="drawerAndroidInstallLink" class="drawer-install-link" href="Vetamerikan-Shift-Asistan-debug.apk" download hidden>Android uygulamasını kur</a>
       <button id="logoutButton" type="button">Çıkış yap</button>
     </div>
   </aside>
@@ -1722,7 +1738,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.25.06";
+    const appVersion = "2026.06.25.08";
     const notificationReadMarkerTitle = "__VSA_READ__";
     const notificationClearMarkerTitle = "__VSA_CLEAR__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
@@ -2036,7 +2052,8 @@
       notificationPromptAllow: document.getElementById("notificationPromptAllow"),
       notificationPromptDismiss: document.getElementById("notificationPromptDismiss"),
       androidInstallPrompt: document.getElementById("androidInstallPrompt"),
-      androidInstallDismiss: document.getElementById("androidInstallDismiss")
+      androidInstallDismiss: document.getElementById("androidInstallDismiss"),
+      drawerAndroidInstallLink: document.getElementById("drawerAndroidInstallLink")
     };
 
     function norm(text) {
@@ -2316,17 +2333,24 @@
         : `Supabase kütüphanesi yüklenemedi. Sürüm ${appVersion}`;
     }
 
-    function shouldShowAndroidInstallPrompt() {
+    function isAndroidBrowser() {
       const ua = navigator.userAgent || "";
       const isAndroid = /Android/i.test(ua);
       const isWebView = /; wv\)/i.test(ua) || /Version\/[\d.]+.*Chrome\/[\d.]+ Mobile Safari/i.test(ua);
       const isAssetApp = location.href.startsWith("file:///android_asset/");
-      return isAndroid && !isWebView && !isAssetApp && localStorage.getItem(androidInstallDismissedKey) !== "1";
+      return isAndroid && !isWebView && !isAssetApp;
+    }
+
+    function shouldShowAndroidInstallPrompt() {
+      return isAndroidBrowser() && localStorage.getItem(androidInstallDismissedKey) !== "1";
     }
 
     function updateAndroidInstallPrompt() {
       if (!els.androidInstallPrompt) return;
       els.androidInstallPrompt.hidden = !shouldShowAndroidInstallPrompt();
+      if (els.drawerAndroidInstallLink) {
+        els.drawerAndroidInstallLink.hidden = !isAndroidBrowser();
+      }
     }
 
     function dismissAndroidInstallPrompt() {
