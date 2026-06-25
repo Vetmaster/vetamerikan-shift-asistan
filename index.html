@@ -1736,7 +1736,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.25.09";
+    const appVersion = "2026.06.25.10";
     const notificationReadMarkerTitle = "__VSA_READ__";
     const notificationClearMarkerTitle = "__VSA_CLEAR__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
@@ -2050,6 +2050,7 @@
       notificationPromptAllow: document.getElementById("notificationPromptAllow"),
       notificationPromptDismiss: document.getElementById("notificationPromptDismiss"),
       androidInstallPrompt: document.getElementById("androidInstallPrompt"),
+      androidInstallLink: document.getElementById("androidInstallLink"),
       androidInstallDismiss: document.getElementById("androidInstallDismiss"),
       drawerAndroidInstallLink: document.getElementById("drawerAndroidInstallLink")
     };
@@ -4422,6 +4423,7 @@
     });
     els.notificationPromptAllow.addEventListener("click", requestNotifications);
     els.notificationPromptDismiss.addEventListener("click", dismissNotificationPrompt);
+    els.androidInstallLink.addEventListener("click", dismissAndroidInstallPrompt);
     els.androidInstallDismiss.addEventListener("click", dismissAndroidInstallPrompt);
     els.excelImportButton.addEventListener("click", importExcelFile);
     els.bicarbToolButton.addEventListener("click", openBicarbonateTool);
