@@ -1414,7 +1414,6 @@
       grid-template-columns: 1fr auto auto;
       align-items: center;
       gap: 8px;
-      order: -1;
       padding: 10px 12px;
       border: 1px solid rgba(15, 108, 116, .18);
       border-radius: 8px;
@@ -1487,15 +1486,6 @@
   </section>
 
   <main id="app" class="app">
-    <section id="androidInstallPrompt" class="android-install-prompt" hidden>
-      <span>
-        <strong>Android uygulaması hazır</strong>
-        <small>Web yerine telefonuna APK olarak kurabilirsin.</small>
-      </span>
-      <a id="androidInstallLink" href="Vetamerikan-Shift-Asistan-debug.apk" download>Uygulamayı kur</a>
-      <button id="androidInstallDismiss" type="button">Daha sonra</button>
-    </section>
-
     <header class="top">
       <div class="brand">
         <h1>
@@ -1525,6 +1515,14 @@
           <button id="menuButton" class="menu-button" type="button" aria-label="Menü">☰</button>
         </div>
       </div>
+      <section id="androidInstallPrompt" class="android-install-prompt" hidden>
+        <span>
+          <strong>Android uygulaması hazır</strong>
+          <small>Web yerine telefonuna APK olarak kurabilirsin.</small>
+        </span>
+        <a id="androidInstallLink" href="Vetamerikan-Shift-Asistan-debug.apk" download>Uygulamayı kur</a>
+        <button id="androidInstallDismiss" type="button">Daha sonra</button>
+      </section>
       <div class="search">
         <input id="searchInput" type="search" placeholder="Hekim ara" autocomplete="off">
         <button id="todayButton" type="button">Bugün</button>
@@ -1738,7 +1736,7 @@
     const datasetTable = "shift_datasets";
     const notificationTable = "shift_notifications";
     const messageTable = "shift_messages";
-    const appVersion = "2026.06.25.08";
+    const appVersion = "2026.06.25.09";
     const notificationReadMarkerTitle = "__VSA_READ__";
     const notificationClearMarkerTitle = "__VSA_CLEAR__";
     const supabaseClient = window.supabase ? window.supabase.createClient(supabaseUrl, supabaseKey) : null;
